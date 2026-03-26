@@ -150,36 +150,50 @@ export default function PdfReader({ bookId, fileData }: Props) {
     return () => document.removeEventListener('mouseup', handleMouseUp)
   }, [currentPage])
 
-  // 将当前选区用高亮色包裹
+  // 在文字层中用 <mark> 精确包裹选中文字
   const applyHighlightToSelection = (color: string) => {
     const selection = document.getSelection()
     if (!selection || selection.rangeCount === 0) return
 
     const range = selection.getRangeAt(0)
-    // 遍历选区内的所有文字节点，用 mark 包裹
+
+    // 收集选区覆盖的文字节点及其起止偏移
     const treeWalker = document.createTreeWalker(
       textLayerRef.current!,
       NodeFilter.SHOW_TEXT,
     )
-    const textNodes: Text[] = []
+    const entries: { node: Text; start: number; end: number }[] = []
     while (treeWalker.nextNode()) {
       const node = treeWalker.currentNode as Text
-      if (range.intersectsNode(node)) {
-        textNodes.push(node)
-      }
+      if (!range.intersectsNode(node)) continue
+
+      const start = node === range.startContainer ? range.startOffset : 0
+      const end = node === range.endContainer ? range.endOffset : node.length
+      if (start < end) entries.push({ node, start, end })
     }
 
-    for (const node of textNodes) {
-      const span = node.parentElement
-      if (!span) continue
-      span.style.backgroundColor = color
-      span.style.opacity = '0.35'
-      span.style.borderRadius = '2px'
-      span.dataset.highlightColor = color
+    // 逆序处理，避免 splitText 影响后续节点偏移
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const { node, start, end } = entries[i]
+      // 截取需要高亮的部分
+      let target: Text = node
+      if (end < node.length) node.splitText(end)
+      if (start > 0) target = node.splitText(start)
+
+      const mark = document.createElement('mark')
+      mark.style.backgroundColor = color
+      mark.style.opacity = '0.4'
+      mark.style.borderRadius = '2px'
+      mark.style.color = 'transparent'
+      mark.style.padding = '0'
+      mark.style.margin = '0'
+      mark.dataset.pdfHighlight = 'true'
+      target.parentNode!.insertBefore(mark, target)
+      mark.appendChild(target)
     }
   }
 
-  // 页面渲染后恢复该页已有高亮的视觉标记
+  // 页面渲染后恢复该页已有高亮
   const restorePageHighlights = useCallback(async () => {
     if (!textLayerRef.current) return
     const highlights = await db.highlights
@@ -189,17 +203,53 @@ export default function PdfReader({ bookId, fileData }: Props) {
     if (pageHighlights.length === 0) return
 
     // 等文字层渲染完
-    await new Promise(r => setTimeout(r, 100))
+    await new Promise(r => setTimeout(r, 150))
+    if (!textLayerRef.current) return
 
-    const spans = textLayerRef.current.querySelectorAll('span')
+    // 拼出该页完整文本，对每条高亮做子串查找并标记
+    const allSpans = Array.from(textLayerRef.current.querySelectorAll('span'))
     for (const h of pageHighlights) {
-      spans.forEach(span => {
-        if (span.textContent && h.text.includes(span.textContent.trim())) {
-          span.style.backgroundColor = h.color
-          span.style.opacity = '0.35'
-          span.style.borderRadius = '2px'
-        }
-      })
+      const needle = h.text
+      // 构建 span → 文字偏移的映射
+      let fullText = ''
+      const map: { span: HTMLSpanElement; startInFull: number }[] = []
+      for (const span of allSpans) {
+        map.push({ span, startInFull: fullText.length })
+        fullText += span.textContent || ''
+      }
+
+      const idx = fullText.indexOf(needle)
+      if (idx === -1) continue
+      const endIdx = idx + needle.length
+
+      // 找到覆盖 [idx, endIdx) 范围的 span，精确拆分文字节点
+      for (const { span, startInFull } of map) {
+        const spanText = span.textContent || ''
+        const spanEnd = startInFull + spanText.length
+        if (spanEnd <= idx || startInFull >= endIdx) continue
+
+        const textNode = span.firstChild
+        if (!textNode || textNode.nodeType !== Node.TEXT_NODE) continue
+        const tn = textNode as Text
+
+        const localStart = Math.max(0, idx - startInFull)
+        const localEnd = Math.min(spanText.length, endIdx - startInFull)
+
+        let target: Text = tn
+        if (localEnd < tn.length) tn.splitText(localEnd)
+        if (localStart > 0) target = tn.splitText(localStart)
+
+        const mark = document.createElement('mark')
+        mark.style.backgroundColor = h.color
+        mark.style.opacity = '0.4'
+        mark.style.borderRadius = '2px'
+        mark.style.color = 'transparent'
+        mark.style.padding = '0'
+        mark.style.margin = '0'
+        mark.dataset.pdfHighlight = 'true'
+        target.parentNode!.insertBefore(mark, target)
+        mark.appendChild(target)
+      }
     }
   }, [bookId, currentPage])
 

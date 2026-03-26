@@ -4,7 +4,7 @@ import ReaderPage from './pages/ReaderPage'
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/bookmark">
       <Routes>
         <Route path="/" element={<LibraryPage />} />
         <Route path="/read/:bookId" element={<ReaderPage />} />

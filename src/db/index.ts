@@ -12,7 +12,7 @@ class BookMarkDB extends Dexie {
     this.version(1).stores({
       books: '++id, title, format, createdAt',
       highlights: '++id, bookId, createdAt',
-      notes: '++id, bookId',
+      notes: '++id, &bookId',
       readingProgress: 'bookId',
     })
   }

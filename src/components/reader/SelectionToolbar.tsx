@@ -23,7 +23,7 @@ export default function SelectionToolbar({ position, onHighlight, onAddToNote, o
 
   return (
     <div
-      className="fixed z-50 bg-gray-800 rounded-lg shadow-xl border border-gray-600 p-1 flex gap-1"
+      className="fixed z-50 bg-gray-800 rounded-lg shadow-xl border border-gray-600 p-1 flex gap-1 select-none"
       style={{ left: position.x, top: position.y }}
     >
       {!showColors ? (

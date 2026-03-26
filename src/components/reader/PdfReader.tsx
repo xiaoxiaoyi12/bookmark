@@ -398,7 +398,7 @@ export default function PdfReader({ bookId, fileData }: Props) {
   return (
     <div className="h-full flex flex-col items-center">
       {/* 工具栏 */}
-      <div className="flex items-center gap-3 py-2 shrink-0 flex-wrap justify-center">
+      <div className="flex items-center gap-3 py-2 shrink-0 flex-wrap justify-center select-none">
         <button
           onClick={() => scrollToPage(Math.max(currentPage - 1, 1))}
           disabled={currentPage <= 1}

@@ -71,6 +71,21 @@ export default function LibraryPage() {
           <h1 className="text-2xl font-bold text-amber-900 dark:text-white">BookMark</h1>
         </div>
         <div className="flex gap-2 select-none items-center">
+          {books.length > 0 && (
+            <div className="relative">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-400 dark:text-gray-500" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="6.5" cy="6.5" r="4.5" />
+                <path d="M10 10l4 4" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="搜索书名..."
+                className="w-48 pl-8 pr-3 py-1.5 text-sm rounded-lg border border-amber-200 bg-white placeholder-amber-400 text-amber-900 outline-none focus:border-amber-400 transition-colors dark:bg-gray-800 dark:border-gray-700 dark:placeholder-gray-500 dark:text-gray-200 dark:focus:border-gray-500"
+              />
+            </div>
+          )}
           <ThemeToggle />
           <button
             onClick={handleExport}
@@ -95,25 +110,7 @@ export default function LibraryPage() {
         </div>
       </div>
       <ImportDropzone onImported={loadBooks} />
-
-      {/* 搜索栏 */}
-      {books.length > 0 && (
-        <div className="mt-6 relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400 dark:text-gray-500" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="6.5" cy="6.5" r="4.5" />
-            <path d="M10 10l4 4" />
-          </svg>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="搜索书名..."
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-amber-200 bg-white placeholder-amber-400 text-amber-900 outline-none focus:border-amber-400 transition-colors dark:bg-gray-800 dark:border-gray-700 dark:placeholder-gray-500 dark:text-gray-200 dark:focus:border-gray-500"
-          />
-        </div>
-      )}
-
-      <div className="mt-4">
+      <div className="mt-8">
         <BookGrid books={filteredBooks} onChanged={loadBooks} />
       </div>
 

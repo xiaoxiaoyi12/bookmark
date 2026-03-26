@@ -79,7 +79,7 @@ export default function ReaderPage() {
 
         {noteOpen && book.id && (
           <div className="border-l border-gray-700 shrink-0" style={{ width: noteWidth }}>
-            <NotePanel bookId={book.id} />
+            <NotePanel bookId={book.id} readerRef={readerRef} />
           </div>
         )}
       </div>

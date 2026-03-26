@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { db } from "../../db";
-import type { Note } from "../../types";
+import type { Note, ReaderHandle } from "../../types";
 import TiptapEditor from "./TiptapEditor";
 import HighlightList from "./HighlightList";
 
 interface Props {
   bookId: number;
+  readerRef?: React.RefObject<ReaderHandle | null>;
 }
 
-export default function NotePanel({ bookId }: Props) {
+export default function NotePanel({ bookId, readerRef }: Props) {
   const [note, setNote] = useState<Note | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -57,7 +58,7 @@ export default function NotePanel({ bookId }: Props) {
         笔记
       </h2>
       <TiptapEditor content={note?.content || ""} onUpdate={handleUpdate} />
-      <HighlightList bookId={bookId} />
+      <HighlightList bookId={bookId} onDelete={(h) => readerRef?.current?.removeHighlight(h)} />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { TextLayer } from 'pdfjs-dist'
 import { db } from '../../db'
 import SelectionToolbar from './SelectionToolbar'
-import type { SearchResult, ReaderHandle } from '../../types'
+import type { SearchResult, ReaderHandle, Highlight } from '../../types'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
@@ -69,6 +69,22 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
         const el = pageRefs.current.get(result.page)
         if (el) el.scrollIntoView({ behavior: 'smooth' })
       }
+    },
+    removeHighlight(highlight: Highlight) {
+      // PDF 高亮是 page:N 格式，找到对应页面中的 mark 元素
+      const pageNum = highlight.cfiRange.startsWith('page:') ? Number(highlight.cfiRange.split(':')[1]) : null
+      if (!pageNum) return
+      const container = pageRefs.current.get(pageNum)
+      if (!container) return
+      const marks = container.querySelectorAll('mark')
+      marks.forEach(mark => {
+        if (mark.textContent === highlight.text) {
+          const parent = mark.parentNode!
+          while (mark.firstChild) parent.insertBefore(mark.firstChild, mark)
+          parent.removeChild(mark)
+          parent.normalize()
+        }
+      })
     },
   }), [pdfDoc])
 

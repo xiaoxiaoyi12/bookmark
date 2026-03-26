@@ -40,4 +40,5 @@ export interface SearchResult {
 export interface ReaderHandle {
   search: (query: string) => Promise<SearchResult[]>
   goTo: (result: SearchResult) => void
+  removeHighlight: (highlight: Highlight) => void
 }

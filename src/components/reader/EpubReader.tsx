@@ -5,7 +5,7 @@ import { db } from '../../db'
 import TableOfContents from './TableOfContents'
 import SelectionToolbar from './SelectionToolbar'
 import { useReaderStore } from '../../stores/useReaderStore'
-import type { SearchResult, ReaderHandle } from '../../types'
+import type { SearchResult, ReaderHandle, Highlight } from '../../types'
 
 interface Props {
   bookId: number
@@ -59,6 +59,9 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
       if (result.location) {
         renditionRef.current?.display(result.location)
       }
+    },
+    removeHighlight(highlight: Highlight) {
+      renditionRef.current?.annotations.remove(highlight.cfiRange, 'highlight')
     },
   }), [])
 

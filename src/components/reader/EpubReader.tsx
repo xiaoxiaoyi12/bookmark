@@ -31,6 +31,7 @@ export default function EpubReader({ bookId, fileData }: Props) {
       width: '100%',
       height: '100%',
       spread: 'none',
+      flow: 'scrolled-doc',
     })
 
     renditionRef.current = rendition
@@ -105,10 +106,10 @@ export default function EpubReader({ bookId, fileData }: Props) {
       })
     })
 
-    // 键盘翻页
+    // 键盘切换章节（左右方向键）
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') rendition.next()
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') rendition.prev()
+      if (e.key === 'ArrowRight') rendition.next()
+      if (e.key === 'ArrowLeft') rendition.prev()
     }
     document.addEventListener('keydown', handleKeyDown)
 

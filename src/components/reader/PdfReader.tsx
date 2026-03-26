@@ -17,212 +17,220 @@ interface Props {
 const SCALE_STEP = 0.25
 const SCALE_MIN = 0.5
 const SCALE_MAX = 4
+const PAGE_GAP = 12
 
 interface SelectionData {
   text: string
-  cfiRange: string  // PDF 用 "page:N" 格式
+  cfiRange: string
   position: { x: number; y: number }
 }
 
 export default function PdfReader({ bookId, fileData }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const textLayerRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
   const [scale, setScale] = useState(1.5)
-  const wrapperRef = useRef<HTMLDivElement>(null)
-  const renderTaskRef = useRef<ReturnType<pdfjsLib.PDFPageProxy['render']> | null>(null)
   const [selectionData, setSelectionData] = useState<SelectionData | null>(null)
 
-  // 加载 PDF 文档
+  // 每页的容器 ref
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  // 已渲染的页码集合
+  const renderedPages = useRef<Set<number>>(new Set())
+  // 是否正在恢复进度滚动
+  const restoringScroll = useRef(false)
+
+  // 加载 PDF
   useEffect(() => {
     const load = async () => {
       const doc = await pdfjsLib.getDocument({ data: fileData.slice(0) }).promise
       setPdfDoc(doc)
       setTotalPages(doc.numPages)
-
-      const progress = await db.readingProgress.get(bookId)
-      if (progress?.location) {
-        setCurrentPage(Number(progress.location))
-      }
     }
     load()
   }, [bookId, fileData])
 
-  // 渲染当前页（canvas + text layer）
-  useEffect(() => {
-    if (!pdfDoc || !canvasRef.current || !textLayerRef.current) return
+  // 渲染单页
+  const renderPage = useCallback(async (pageNum: number) => {
+    if (!pdfDoc || renderedPages.current.has(pageNum)) return
+    const container = pageRefs.current.get(pageNum)
+    if (!container) return
 
-    // 取消上一次渲染
-    if (renderTaskRef.current) {
-      renderTaskRef.current.cancel()
-      renderTaskRef.current = null
+    renderedPages.current.add(pageNum)
+
+    const page = await pdfDoc.getPage(pageNum)
+    const viewport = page.getViewport({ scale })
+    const w = Math.floor(viewport.width)
+    const h = Math.floor(viewport.height)
+
+    container.style.width = `${w}px`
+    container.style.height = `${h}px`
+
+    // Canvas
+    const canvas = document.createElement('canvas')
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = Math.floor(viewport.width * dpr)
+    canvas.height = Math.floor(viewport.height * dpr)
+    canvas.style.width = `${w}px`
+    canvas.style.height = `${h}px`
+    canvas.style.display = 'block'
+    const ctx = canvas.getContext('2d')!
+    ctx.scale(dpr, dpr)
+
+    container.innerHTML = ''
+    container.appendChild(canvas)
+
+    try {
+      await page.render({ canvasContext: ctx, canvas, viewport }).promise
+    } catch {
+      return
     }
 
-    const render = async () => {
-      const page = await pdfDoc.getPage(currentPage)
-      const viewport = page.getViewport({ scale })
-      const canvas = canvasRef.current!
-      const textLayerDiv = textLayerRef.current!
-      const wrapper = wrapperRef.current!
+    // Text layer
+    const textDiv = document.createElement('div')
+    textDiv.className = 'pdf-text-layer'
+    textDiv.style.width = `${w}px`
+    textDiv.style.height = `${h}px`
+    container.appendChild(textDiv)
 
-      // 设置 wrapper 精确匹配 viewport 尺寸
-      const w = Math.floor(viewport.width)
-      const h = Math.floor(viewport.height)
-      wrapper.style.width = `${w}px`
-      wrapper.style.height = `${h}px`
-
-      // HiDPI: canvas 按 devicePixelRatio 放大，再用 CSS 缩回
-      const dpr = window.devicePixelRatio || 1
-      canvas.width = Math.floor(viewport.width * dpr)
-      canvas.height = Math.floor(viewport.height * dpr)
-      canvas.style.width = `${w}px`
-      canvas.style.height = `${h}px`
-
-      const ctx = canvas.getContext('2d')!
-      ctx.scale(dpr, dpr)
-
-      const renderTask = page.render({
-        canvasContext: ctx,
-        canvas,
-        viewport,
-      })
-      renderTaskRef.current = renderTask
-
-      try {
-        await renderTask.promise
-      } catch {
-        // render cancelled
-        return
-      }
-
-      // 清空并重建文字层，尺寸精确匹配
-      textLayerDiv.innerHTML = ''
-      textLayerDiv.style.width = `${w}px`
-      textLayerDiv.style.height = `${h}px`
-
-      const textContent = await page.getTextContent()
-      const textLayer = new TextLayer({
-        textContentSource: textContent,
-        container: textLayerDiv,
-        viewport,
-      })
-      await textLayer.render()
-    }
-    render()
-
-    // 保存进度
-    db.readingProgress.put({
-      bookId,
-      location: String(currentPage),
-      updatedAt: Date.now(),
+    const textContent = await page.getTextContent()
+    const textLayer = new TextLayer({
+      textContentSource: textContent,
+      container: textDiv,
+      viewport,
     })
-  }, [pdfDoc, currentPage, bookId, scale])
+    await textLayer.render()
 
-  // 监听文字选中
-  useEffect(() => {
-    const handleMouseUp = () => {
-      const selection = document.getSelection()
-      if (!selection || selection.isCollapsed) return
-
-      const text = selection.toString().trim()
-      if (!text) return
-
-      // 确保选中发生在文字层内
-      const anchor = selection.anchorNode
-      if (!textLayerRef.current?.contains(anchor)) return
-
-      const range = selection.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
-
-      setSelectionData({
-        text,
-        cfiRange: `page:${currentPage}`,
-        position: {
-          x: rect.left + rect.width / 2 - 80,
-          y: rect.bottom + 8,
-        },
-      })
-    }
-    document.addEventListener('mouseup', handleMouseUp)
-    return () => document.removeEventListener('mouseup', handleMouseUp)
-  }, [currentPage])
-
-  // 在文字层中用 <mark> 精确包裹选中文字
-  const applyHighlightToSelection = (color: string) => {
-    const selection = document.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    const range = selection.getRangeAt(0)
-
-    // 收集选区覆盖的文字节点及其起止偏移
-    const treeWalker = document.createTreeWalker(
-      textLayerRef.current!,
-      NodeFilter.SHOW_TEXT,
-    )
-    const entries: { node: Text; start: number; end: number }[] = []
-    while (treeWalker.nextNode()) {
-      const node = treeWalker.currentNode as Text
-      if (!range.intersectsNode(node)) continue
-
-      const start = node === range.startContainer ? range.startOffset : 0
-      const end = node === range.endContainer ? range.endOffset : node.length
-      if (start < end) entries.push({ node, start, end })
-    }
-
-    // 逆序处理，避免 splitText 影响后续节点偏移
-    for (let i = entries.length - 1; i >= 0; i--) {
-      const { node, start, end } = entries[i]
-      // 截取需要高亮的部分
-      let target: Text = node
-      if (end < node.length) node.splitText(end)
-      if (start > 0) target = node.splitText(start)
-
-      const mark = document.createElement('mark')
-      mark.style.backgroundColor = color
-      mark.style.opacity = '0.4'
-      mark.style.borderRadius = '2px'
-      mark.style.color = 'transparent'
-      mark.style.padding = '0'
-      mark.style.margin = '0'
-      mark.dataset.pdfHighlight = 'true'
-      target.parentNode!.insertBefore(mark, target)
-      mark.appendChild(target)
-    }
-  }
-
-  // 页面渲染后恢复该页已有高亮
-  const restorePageHighlights = useCallback(async () => {
-    if (!textLayerRef.current) return
+    // 恢复该页高亮
     const highlights = await db.highlights
       .where('bookId').equals(bookId)
       .toArray()
-    const pageHighlights = highlights.filter(h => h.cfiRange === `page:${currentPage}`)
-    if (pageHighlights.length === 0) return
+    const pageHighlights = highlights.filter(hl => hl.cfiRange === `page:${pageNum}`)
+    if (pageHighlights.length > 0) {
+      applyHighlightsToPage(textDiv, pageHighlights)
+    }
+  }, [pdfDoc, scale, bookId])
 
-    // 等文字层渲染完
-    await new Promise(r => setTimeout(r, 150))
-    if (!textLayerRef.current) return
+  // 缩放时清除已渲染状态，重新渲染可见页
+  useEffect(() => {
+    renderedPages.current.clear()
+    // 设置占位尺寸（用第一页估算）
+    if (!pdfDoc) return
+    pdfDoc.getPage(1).then(page => {
+      const viewport = page.getViewport({ scale })
+      const w = Math.floor(viewport.width)
+      const h = Math.floor(viewport.height)
+      pageRefs.current.forEach((container) => {
+        container.style.width = `${w}px`
+        container.style.height = `${h}px`
+        container.innerHTML = ''
+      })
+    })
+  }, [pdfDoc, scale])
 
-    // 拼出该页完整文本，对每条高亮做子串查找并标记
-    const allSpans = Array.from(textLayerRef.current.querySelectorAll('span'))
-    for (const h of pageHighlights) {
-      const needle = h.text
-      // 构建 span → 文字偏移的映射
-      let fullText = ''
-      const map: { span: HTMLSpanElement; startInFull: number }[] = []
-      for (const span of allSpans) {
-        map.push({ span, startInFull: fullText.length })
-        fullText += span.textContent || ''
+  // IntersectionObserver 懒渲染
+  useEffect(() => {
+    if (!pdfDoc || totalPages === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const pageNum = Number(entry.target.getAttribute('data-page'))
+            if (pageNum && !renderedPages.current.has(pageNum)) {
+              renderPage(pageNum)
+            }
+          }
+        }
+      },
+      {
+        root: scrollRef.current,
+        rootMargin: '200px 0px',
       }
+    )
 
-      const idx = fullText.indexOf(needle)
+    pageRefs.current.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [pdfDoc, totalPages, renderPage])
+
+  // 跟踪当前页码（滚动时更新）
+  useEffect(() => {
+    const container = scrollRef.current
+    if (!container || totalPages === 0) return
+
+    const handleScroll = () => {
+      if (restoringScroll.current) return
+
+      const containerRect = container.getBoundingClientRect()
+      const center = containerRect.top + containerRect.height / 2
+
+      let closest = 1
+      let minDist = Infinity
+      pageRefs.current.forEach((el, num) => {
+        const rect = el.getBoundingClientRect()
+        const dist = Math.abs(rect.top + rect.height / 2 - center)
+        if (dist < minDist) {
+          minDist = dist
+          closest = num
+        }
+      })
+
+      setCurrentPage(closest)
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [totalPages])
+
+  // 保存阅读进度（防抖）
+  useEffect(() => {
+    if (restoringScroll.current) return
+    const timer = setTimeout(() => {
+      db.readingProgress.put({
+        bookId,
+        location: String(currentPage),
+        updatedAt: Date.now(),
+      })
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [currentPage, bookId])
+
+  // 恢复阅读进度 — 滚动到保存的页码
+  useEffect(() => {
+    if (!pdfDoc || totalPages === 0) return
+    db.readingProgress.get(bookId).then(progress => {
+      if (!progress?.location) return
+      const savedPage = Number(progress.location)
+      if (savedPage <= 1 || savedPage > totalPages) return
+
+      restoringScroll.current = true
+      // 等待页面容器挂载后滚动
+      requestAnimationFrame(() => {
+        const el = pageRefs.current.get(savedPage)
+        if (el) {
+          el.scrollIntoView({ behavior: 'instant' })
+          setCurrentPage(savedPage)
+        }
+        setTimeout(() => { restoringScroll.current = false }, 300)
+      })
+    })
+  }, [pdfDoc, totalPages, bookId])
+
+  // 高亮到具体页面的文字层
+  const applyHighlightsToPage = (textDiv: HTMLDivElement, highlights: { text: string; color: string }[]) => {
+    const allSpans = Array.from(textDiv.querySelectorAll('span'))
+    let fullText = ''
+    const map: { span: HTMLSpanElement; startInFull: number }[] = []
+    for (const span of allSpans) {
+      map.push({ span, startInFull: fullText.length })
+      fullText += span.textContent || ''
+    }
+
+    for (const h of highlights) {
+      const idx = fullText.indexOf(h.text)
       if (idx === -1) continue
-      const endIdx = idx + needle.length
+      const endIdx = idx + h.text.length
 
-      // 找到覆盖 [idx, endIdx) 范围的 span，精确拆分文字节点
       for (const { span, startInFull } of map) {
         const spanText = span.textContent || ''
         const spanEnd = startInFull + spanText.length
@@ -246,19 +254,86 @@ export default function PdfReader({ bookId, fileData }: Props) {
         mark.style.color = 'transparent'
         mark.style.padding = '0'
         mark.style.margin = '0'
-        mark.dataset.pdfHighlight = 'true'
         target.parentNode!.insertBefore(mark, target)
         mark.appendChild(target)
       }
     }
-  }, [bookId, currentPage])
+  }
 
-  // 渲染完成后恢复高亮
+  // 选中文字后弹出工具栏
+  const findPageForNode = (node: Node): number | null => {
+    let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node as HTMLElement
+    while (el) {
+      const page = el.getAttribute?.('data-page')
+      if (page) return Number(page)
+      el = el.parentElement
+    }
+    return null
+  }
+
   useEffect(() => {
-    restorePageHighlights()
-  }, [restorePageHighlights, scale])
+    const handleMouseUp = () => {
+      const selection = document.getSelection()
+      if (!selection || selection.isCollapsed) return
+      const text = selection.toString().trim()
+      if (!text) return
 
-  // 高亮
+      const anchor = selection.anchorNode
+      if (!anchor || !scrollRef.current?.contains(anchor)) return
+
+      const pageNum = findPageForNode(anchor)
+      if (!pageNum) return
+
+      const range = selection.getRangeAt(0)
+      const rect = range.getBoundingClientRect()
+
+      setSelectionData({
+        text,
+        cfiRange: `page:${pageNum}`,
+        position: { x: rect.left + rect.width / 2 - 80, y: rect.bottom + 8 },
+      })
+    }
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => document.removeEventListener('mouseup', handleMouseUp)
+  }, [])
+
+  // 高亮选区
+  const applyHighlightToSelection = (color: string) => {
+    const selection = document.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const range = selection.getRangeAt(0)
+    const container = scrollRef.current
+    if (!container) return
+
+    const treeWalker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
+    const entries: { node: Text; start: number; end: number }[] = []
+    while (treeWalker.nextNode()) {
+      const node = treeWalker.currentNode as Text
+      if (!range.intersectsNode(node)) continue
+      const start = node === range.startContainer ? range.startOffset : 0
+      const end = node === range.endContainer ? range.endOffset : node.length
+      if (start < end) entries.push({ node, start, end })
+    }
+
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const { node, start, end } = entries[i]
+      let target: Text = node
+      if (end < node.length) node.splitText(end)
+      if (start > 0) target = node.splitText(start)
+
+      const mark = document.createElement('mark')
+      mark.style.backgroundColor = color
+      mark.style.opacity = '0.4'
+      mark.style.borderRadius = '2px'
+      mark.style.color = 'transparent'
+      mark.style.padding = '0'
+      mark.style.margin = '0'
+      target.parentNode!.insertBefore(mark, target)
+      mark.appendChild(target)
+    }
+  }
+
   const handleHighlight = async (color: string) => {
     if (!selectionData) return
     applyHighlightToSelection(color)
@@ -273,7 +348,6 @@ export default function PdfReader({ bookId, fileData }: Props) {
     document.getSelection()?.removeAllRanges()
   }
 
-  // 添加到笔记
   const handleAddToNote = async (color: string) => {
     if (!selectionData) return
     applyHighlightToSelection(color)
@@ -284,7 +358,6 @@ export default function PdfReader({ bookId, fileData }: Props) {
       color,
       createdAt: Date.now(),
     })
-    // 插入引用到笔记编辑器
     const editor = (window as unknown as Record<string, unknown>).__tiptapEditor as
       { chain: () => { focus: () => { insertContent: (c: unknown) => { run: () => void } } } } | undefined
     if (editor) {
@@ -302,61 +375,32 @@ export default function PdfReader({ bookId, fileData }: Props) {
   const zoomOut = useCallback(() => setScale(s => Math.max(s - SCALE_STEP, SCALE_MIN)), [])
   const zoomReset = useCallback(() => setScale(1.5), [])
 
-  // 鼠标滚轮翻页
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+  // 点击页码跳转
+  const scrollToPage = (pageNum: number) => {
+    const el = pageRefs.current.get(pageNum)
+    if (el) el.scrollIntoView({ behavior: 'smooth' })
+  }
 
-    let scrollTimeout: ReturnType<typeof setTimeout> | null = null
-    const handleWheel = (e: WheelEvent) => {
-      // Ctrl/Cmd + 滚轮 = 缩放，不翻页
-      if (e.ctrlKey || e.metaKey) return
-
-      const el = container
-      const atTop = el.scrollTop <= 0
-      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
-
-      // 页面内容有滚动空间且未到边界，让浏览器正常滚动
-      if ((!atTop && e.deltaY < 0) || (!atBottom && e.deltaY > 0)) return
-
-      // 到达边界，防抖翻页
-      e.preventDefault()
-      if (scrollTimeout) return
-      scrollTimeout = setTimeout(() => { scrollTimeout = null }, 300)
-
-      if (e.deltaY > 0) {
-        setCurrentPage(p => Math.min(p + 1, totalPages))
-      } else if (e.deltaY < 0) {
-        setCurrentPage(p => Math.max(p - 1, 1))
-      }
-    }
-    container.addEventListener('wheel', handleWheel, { passive: false })
-    return () => container.removeEventListener('wheel', handleWheel)
-  }, [totalPages])
-
-  // 键盘：翻页 + 缩放
+  // 键盘缩放
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === '=') { e.preventDefault(); zoomIn() }
       if ((e.metaKey || e.ctrlKey) && e.key === '-') { e.preventDefault(); zoomOut() }
       if ((e.metaKey || e.ctrlKey) && e.key === '0') { e.preventDefault(); zoomReset() }
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        setCurrentPage(p => Math.min(p + 1, totalPages))
-      }
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        setCurrentPage(p => Math.max(p - 1, 1))
-      }
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [totalPages, zoomIn, zoomOut, zoomReset])
+  }, [zoomIn, zoomOut, zoomReset])
+
+  // 生成页码数组
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
 
   return (
     <div className="h-full flex flex-col items-center">
-      {/* 工具栏：翻页 + 缩放 */}
+      {/* 工具栏 */}
       <div className="flex items-center gap-3 py-2 shrink-0 flex-wrap justify-center">
         <button
-          onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+          onClick={() => scrollToPage(Math.max(currentPage - 1, 1))}
           disabled={currentPage <= 1}
           className="text-gray-400 hover:text-white disabled:opacity-30 text-sm"
         >
@@ -364,7 +408,7 @@ export default function PdfReader({ bookId, fileData }: Props) {
         </button>
         <span className="text-gray-400 text-sm">{currentPage} / {totalPages}</span>
         <button
-          onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+          onClick={() => scrollToPage(Math.min(currentPage + 1, totalPages))}
           disabled={currentPage >= totalPages}
           className="text-gray-400 hover:text-white disabled:opacity-30 text-sm"
         >
@@ -386,14 +430,21 @@ export default function PdfReader({ bookId, fileData }: Props) {
         </button>
       </div>
 
-      {/* PDF 画布 + 文字层 */}
-      <div ref={containerRef} className="flex-1 overflow-auto flex justify-center p-4">
-        <div ref={wrapperRef} className="relative shrink-0">
-          <canvas ref={canvasRef} className="block" />
-          <div
-            ref={textLayerRef}
-            className="pdf-text-layer"
-          />
+      {/* 连续滚动容器 */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-auto w-full"
+      >
+        <div className="flex flex-col items-center" style={{ gap: `${PAGE_GAP}px`, padding: '16px 0' }}>
+          {pages.map(pageNum => (
+            <div
+              key={pageNum}
+              data-page={pageNum}
+              ref={(el) => { if (el) pageRefs.current.set(pageNum, el) }}
+              className="relative shrink-0 bg-white shadow-lg"
+              style={{ minHeight: 200 }}
+            />
+          ))}
         </div>
       </div>
 

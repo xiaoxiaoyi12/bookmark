@@ -309,6 +309,13 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
     }
   }
 
+  // 工具栏关闭时清除文字选区
+  useEffect(() => {
+    if (selectionData === null) {
+      document.getSelection()?.removeAllRanges()
+    }
+  }, [selectionData])
+
   // 选中文字后弹出工具栏
   const findPageForNode = (node: Node): number | null => {
     let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node as HTMLElement

@@ -24,3 +24,34 @@ body {
   color: #9ca3af;
   margin: 0.5rem 0;
 }
+
+/* PDF 文字层 — 精确覆盖在 canvas 上方，使文字可选中 */
+.pdf-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+}
+
+.pdf-text-layer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.pdf-text-layer ::selection {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.pdf-text-layer .highlight {
+  margin: -1px;
+  padding: 1px;
+  background-color: rgba(251, 191, 36, 0.3);
+  border-radius: 2px;
+}

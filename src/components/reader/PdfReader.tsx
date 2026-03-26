@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { TextLayer } from 'pdfjs-dist'
-import 'pdfjs-dist/web/pdf_viewer.css'
 import { db } from '../../db'
 import SelectionToolbar from './SelectionToolbar'
 
@@ -33,6 +32,7 @@ export default function PdfReader({ bookId, fileData }: Props) {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
   const [scale, setScale] = useState(1.5)
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const renderTaskRef = useRef<ReturnType<pdfjsLib.PDFPageProxy['render']> | null>(null)
   const [selectionData, setSelectionData] = useState<SelectionData | null>(null)
 
@@ -66,12 +66,26 @@ export default function PdfReader({ bookId, fileData }: Props) {
       const viewport = page.getViewport({ scale })
       const canvas = canvasRef.current!
       const textLayerDiv = textLayerRef.current!
+      const wrapper = wrapperRef.current!
 
-      canvas.width = viewport.width
-      canvas.height = viewport.height
+      // 设置 wrapper 精确匹配 viewport 尺寸
+      const w = Math.floor(viewport.width)
+      const h = Math.floor(viewport.height)
+      wrapper.style.width = `${w}px`
+      wrapper.style.height = `${h}px`
+
+      // HiDPI: canvas 按 devicePixelRatio 放大，再用 CSS 缩回
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = Math.floor(viewport.width * dpr)
+      canvas.height = Math.floor(viewport.height * dpr)
+      canvas.style.width = `${w}px`
+      canvas.style.height = `${h}px`
+
+      const ctx = canvas.getContext('2d')!
+      ctx.scale(dpr, dpr)
 
       const renderTask = page.render({
-        canvasContext: canvas.getContext('2d')!,
+        canvasContext: ctx,
         canvas,
         viewport,
       })
@@ -84,10 +98,10 @@ export default function PdfReader({ bookId, fileData }: Props) {
         return
       }
 
-      // 清空并重建文字层
+      // 清空并重建文字层，尺寸精确匹配
       textLayerDiv.innerHTML = ''
-      textLayerDiv.style.width = `${viewport.width}px`
-      textLayerDiv.style.height = `${viewport.height}px`
+      textLayerDiv.style.width = `${w}px`
+      textLayerDiv.style.height = `${h}px`
 
       const textContent = await page.getTextContent()
       const textLayer = new TextLayer({
@@ -231,13 +245,12 @@ export default function PdfReader({ bookId, fileData }: Props) {
       </div>
 
       {/* PDF 画布 + 文字层 */}
-      <div ref={containerRef} className="flex-1 overflow-auto flex justify-center">
-        <div className="relative" style={{ display: 'inline-block' }}>
-          <canvas ref={canvasRef} />
+      <div ref={containerRef} className="flex-1 overflow-auto flex justify-center p-4">
+        <div ref={wrapperRef} className="relative shrink-0">
+          <canvas ref={canvasRef} className="block" />
           <div
             ref={textLayerRef}
-            className="textLayer"
-            style={{ position: 'absolute', top: 0, left: 0 }}
+            className="pdf-text-layer"
           />
         </div>
       </div>

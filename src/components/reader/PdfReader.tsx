@@ -538,6 +538,7 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
       {selectionData && (
         <SelectionToolbar
           position={selectionData.position}
+          selectedText={selectionData.text}
           onHighlight={handleHighlight}
           onAddToNote={handleAddToNote}
           onClose={() => setSelectionData(null)}

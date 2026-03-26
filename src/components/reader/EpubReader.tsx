@@ -124,9 +124,14 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
         rendition.annotations.highlight(
           h.cfiRange, {}, (e: MouseEvent) => {
             e.stopPropagation()
+            const iframe = viewerRef.current?.querySelector('iframe')
+            const iframeRect = iframe?.getBoundingClientRect()
             setHighlightPopup({
               cfiRange: h.cfiRange,
-              position: { x: e.clientX, y: e.clientY + 8 },
+              position: {
+                x: (iframeRect?.left ?? 0) + e.clientX,
+                y: (iframeRect?.top ?? 0) + e.clientY + 8,
+              },
             })
           }, '', { fill: h.color, 'fill-opacity': '0.3' }
         )
@@ -184,7 +189,15 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
     renditionRef.current?.annotations.highlight(
       cfiRange, {}, (e: MouseEvent) => {
         e.stopPropagation()
-        setHighlightPopup({ cfiRange, position: { x: e.clientX, y: e.clientY + 8 } })
+        const iframe = viewerRef.current?.querySelector('iframe')
+        const iframeRect = iframe?.getBoundingClientRect()
+        setHighlightPopup({
+          cfiRange,
+          position: {
+            x: (iframeRect?.left ?? 0) + e.clientX,
+            y: (iframeRect?.top ?? 0) + e.clientY + 8,
+          },
+        })
       }, '', { fill: color, 'fill-opacity': '0.3' }
     )
   }

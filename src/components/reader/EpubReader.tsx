@@ -224,6 +224,14 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
     setSelectionData(null)
   }
 
+  // 工具栏关闭时清除 iframe 内的文字选区
+  useEffect(() => {
+    if (selectionData === null) {
+      const iframe = viewerRef.current?.querySelector('iframe')
+      iframe?.contentDocument?.getSelection()?.removeAllRanges()
+    }
+  }, [selectionData])
+
   const handleTocSelect = (href: string) => {
     renditionRef.current?.display(href)
   }
@@ -242,6 +250,7 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
       {selectionData && (
         <SelectionToolbar
           position={selectionData.position}
+          selectedText={selectionData.text}
           onHighlight={handleHighlight}
           onAddToNote={handleAddToNote}
           onClose={() => setSelectionData(null)}

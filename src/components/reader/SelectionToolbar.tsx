@@ -4,12 +4,13 @@ const COLORS = ['#FBBF24', '#34D399', '#60A5FA', '#F87171', '#C084FC']
 
 interface Props {
   position: { x: number; y: number }
+  selectedText: string
   onHighlight: (color: string) => void
   onAddToNote: () => void
   onClose: () => void
 }
 
-export default function SelectionToolbar({ position, onHighlight, onAddToNote, onClose }: Props) {
+export default function SelectionToolbar({ position, selectedText, onHighlight, onAddToNote, onClose }: Props) {
   const [showColors, setShowColors] = useState(false)
   const [action, setAction] = useState<'highlight' | 'note' | null>(null)
   const elRef = useRef<HTMLDivElement>(null)
@@ -52,7 +53,7 @@ export default function SelectionToolbar({ position, onHighlight, onAddToNote, o
           </button>
           <button
             className="px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700 rounded"
-            onClick={() => { navigator.clipboard.writeText(window.getSelection()?.toString() || ''); window.getSelection()?.removeAllRanges(); onClose() }}
+            onClick={() => { navigator.clipboard.writeText(selectedText); onClose() }}
           >
             复制
           </button>

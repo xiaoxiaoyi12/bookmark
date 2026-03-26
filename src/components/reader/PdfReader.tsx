@@ -192,6 +192,38 @@ export default function PdfReader({ bookId, fileData }: Props) {
   const zoomOut = useCallback(() => setScale(s => Math.max(s - SCALE_STEP, SCALE_MIN)), [])
   const zoomReset = useCallback(() => setScale(1.5), [])
 
+  // 鼠标滚轮翻页
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    let scrollTimeout: ReturnType<typeof setTimeout> | null = null
+    const handleWheel = (e: WheelEvent) => {
+      // Ctrl/Cmd + 滚轮 = 缩放，不翻页
+      if (e.ctrlKey || e.metaKey) return
+
+      const el = container
+      const atTop = el.scrollTop <= 0
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
+
+      // 页面内容有滚动空间且未到边界，让浏览器正常滚动
+      if ((!atTop && e.deltaY < 0) || (!atBottom && e.deltaY > 0)) return
+
+      // 到达边界，防抖翻页
+      e.preventDefault()
+      if (scrollTimeout) return
+      scrollTimeout = setTimeout(() => { scrollTimeout = null }, 300)
+
+      if (e.deltaY > 0) {
+        setCurrentPage(p => Math.min(p + 1, totalPages))
+      } else if (e.deltaY < 0) {
+        setCurrentPage(p => Math.max(p - 1, 1))
+      }
+    }
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [totalPages])
+
   // 键盘：翻页 + 缩放
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {

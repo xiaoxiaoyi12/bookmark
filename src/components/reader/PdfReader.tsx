@@ -150,9 +150,68 @@ export default function PdfReader({ bookId, fileData }: Props) {
     return () => document.removeEventListener('mouseup', handleMouseUp)
   }, [currentPage])
 
+  // 将当前选区用高亮色包裹
+  const applyHighlightToSelection = (color: string) => {
+    const selection = document.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const range = selection.getRangeAt(0)
+    // 遍历选区内的所有文字节点，用 mark 包裹
+    const treeWalker = document.createTreeWalker(
+      textLayerRef.current!,
+      NodeFilter.SHOW_TEXT,
+    )
+    const textNodes: Text[] = []
+    while (treeWalker.nextNode()) {
+      const node = treeWalker.currentNode as Text
+      if (range.intersectsNode(node)) {
+        textNodes.push(node)
+      }
+    }
+
+    for (const node of textNodes) {
+      const span = node.parentElement
+      if (!span) continue
+      span.style.backgroundColor = color
+      span.style.opacity = '0.35'
+      span.style.borderRadius = '2px'
+      span.dataset.highlightColor = color
+    }
+  }
+
+  // 页面渲染后恢复该页已有高亮的视觉标记
+  const restorePageHighlights = useCallback(async () => {
+    if (!textLayerRef.current) return
+    const highlights = await db.highlights
+      .where('bookId').equals(bookId)
+      .toArray()
+    const pageHighlights = highlights.filter(h => h.cfiRange === `page:${currentPage}`)
+    if (pageHighlights.length === 0) return
+
+    // 等文字层渲染完
+    await new Promise(r => setTimeout(r, 100))
+
+    const spans = textLayerRef.current.querySelectorAll('span')
+    for (const h of pageHighlights) {
+      spans.forEach(span => {
+        if (span.textContent && h.text.includes(span.textContent.trim())) {
+          span.style.backgroundColor = h.color
+          span.style.opacity = '0.35'
+          span.style.borderRadius = '2px'
+        }
+      })
+    }
+  }, [bookId, currentPage])
+
+  // 渲染完成后恢复高亮
+  useEffect(() => {
+    restorePageHighlights()
+  }, [restorePageHighlights, scale])
+
   // 高亮
   const handleHighlight = async (color: string) => {
     if (!selectionData) return
+    applyHighlightToSelection(color)
     await db.highlights.add({
       bookId,
       cfiRange: selectionData.cfiRange,
@@ -167,6 +226,7 @@ export default function PdfReader({ bookId, fileData }: Props) {
   // 添加到笔记
   const handleAddToNote = async (color: string) => {
     if (!selectionData) return
+    applyHighlightToSelection(color)
     await db.highlights.add({
       bookId,
       cfiRange: selectionData.cfiRange,

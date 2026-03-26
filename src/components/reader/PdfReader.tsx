@@ -3,6 +3,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { TextLayer } from 'pdfjs-dist'
 import 'pdfjs-dist/web/pdf_viewer.css'
 import { db } from '../../db'
+import SelectionToolbar from './SelectionToolbar'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
@@ -18,6 +19,12 @@ const SCALE_STEP = 0.25
 const SCALE_MIN = 0.5
 const SCALE_MAX = 4
 
+interface SelectionData {
+  text: string
+  cfiRange: string  // PDF 用 "page:N" 格式
+  position: { x: number; y: number }
+}
+
 export default function PdfReader({ bookId, fileData }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -27,6 +34,7 @@ export default function PdfReader({ bookId, fileData }: Props) {
   const [totalPages, setTotalPages] = useState(0)
   const [scale, setScale] = useState(1.5)
   const renderTaskRef = useRef<ReturnType<pdfjsLib.PDFPageProxy['render']> | null>(null)
+  const [selectionData, setSelectionData] = useState<SelectionData | null>(null)
 
   // 加载 PDF 文档
   useEffect(() => {
@@ -99,6 +107,72 @@ export default function PdfReader({ bookId, fileData }: Props) {
     })
   }, [pdfDoc, currentPage, bookId, scale])
 
+  // 监听文字选中
+  useEffect(() => {
+    const handleMouseUp = () => {
+      const selection = document.getSelection()
+      if (!selection || selection.isCollapsed) return
+
+      const text = selection.toString().trim()
+      if (!text) return
+
+      // 确保选中发生在文字层内
+      const anchor = selection.anchorNode
+      if (!textLayerRef.current?.contains(anchor)) return
+
+      const range = selection.getRangeAt(0)
+      const rect = range.getBoundingClientRect()
+
+      setSelectionData({
+        text,
+        cfiRange: `page:${currentPage}`,
+        position: {
+          x: rect.left + rect.width / 2 - 80,
+          y: rect.bottom + 8,
+        },
+      })
+    }
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => document.removeEventListener('mouseup', handleMouseUp)
+  }, [currentPage])
+
+  // 高亮
+  const handleHighlight = async (color: string) => {
+    if (!selectionData) return
+    await db.highlights.add({
+      bookId,
+      cfiRange: selectionData.cfiRange,
+      text: selectionData.text,
+      color,
+      createdAt: Date.now(),
+    })
+    setSelectionData(null)
+    document.getSelection()?.removeAllRanges()
+  }
+
+  // 添加到笔记
+  const handleAddToNote = async (color: string) => {
+    if (!selectionData) return
+    await db.highlights.add({
+      bookId,
+      cfiRange: selectionData.cfiRange,
+      text: selectionData.text,
+      color,
+      createdAt: Date.now(),
+    })
+    // 插入引用到笔记编辑器
+    const editor = (window as unknown as Record<string, unknown>).__tiptapEditor as
+      { chain: () => { focus: () => { insertContent: (c: unknown) => { run: () => void } } } } | undefined
+    if (editor) {
+      editor.chain().focus().insertContent([
+        { type: 'blockquote', content: [{ type: 'paragraph', content: [{ type: 'text', text: selectionData.text }] }] },
+        { type: 'paragraph' },
+      ]).run()
+    }
+    setSelectionData(null)
+    document.getSelection()?.removeAllRanges()
+  }
+
   // 缩放
   const zoomIn = useCallback(() => setScale(s => Math.min(s + SCALE_STEP, SCALE_MAX)), [])
   const zoomOut = useCallback(() => setScale(s => Math.max(s - SCALE_STEP, SCALE_MIN)), [])
@@ -167,6 +241,15 @@ export default function PdfReader({ bookId, fileData }: Props) {
           />
         </div>
       </div>
+
+      {selectionData && (
+        <SelectionToolbar
+          position={selectionData.position}
+          onHighlight={handleHighlight}
+          onAddToNote={handleAddToNote}
+          onClose={() => setSelectionData(null)}
+        />
+      )}
     </div>
   )
 }

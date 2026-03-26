@@ -442,16 +442,9 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
     document.getSelection()?.removeAllRanges()
   }
 
-  const handleAddToNote = async (color: string) => {
+  const handleAddToNote = async () => {
     if (!selectionData) return
-    applyHighlightToSelection(color)
-    await db.highlights.add({
-      bookId,
-      cfiRange: selectionData.cfiRange,
-      text: selectionData.text,
-      color,
-      createdAt: Date.now(),
-    })
+    // 仅插入引用到笔记编辑器，不做高亮
     const editor = (window as unknown as Record<string, unknown>).__tiptapEditor as
       { chain: () => { focus: () => { insertContent: (c: unknown) => { run: () => void } } } } | undefined
     if (editor) {

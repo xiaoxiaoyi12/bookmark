@@ -24,6 +24,7 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
   const bookRef = useRef<Book | null>(null)
   const [toc, setToc] = useState<NavItem[]>([])
   const [selectionData, setSelectionData] = useState<SelectionData | null>(null)
+  const [highlightPopup, setHighlightPopup] = useState<{ cfiRange: string; position: { x: number; y: number } } | null>(null)
   const { tocOpen } = useReaderStore()
 
   useImperativeHandle(ref, () => ({
@@ -40,7 +41,7 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
 
       for (const item of items) {
         try {
-          await item.load(book.load.bind(book) as (doc: Document) => Promise<Document>)
+          await item.load(book.load.bind(book) as unknown as (doc: Document) => Promise<Document>)
           const matches = item.find(q)
           for (const m of matches) {
             results.push({
@@ -117,11 +118,17 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
       })
     })
 
-    // 加载并应用已保存的高亮
+    // 加载并应用已保存的高亮（点击高亮弹出取消选项）
     db.highlights.where('bookId').equals(bookId).toArray().then(highlights => {
       highlights.forEach(h => {
         rendition.annotations.highlight(
-          h.cfiRange, {}, () => {}, '', { fill: h.color, 'fill-opacity': '0.3' }
+          h.cfiRange, {}, (e: MouseEvent) => {
+            e.stopPropagation()
+            setHighlightPopup({
+              cfiRange: h.cfiRange,
+              position: { x: e.clientX, y: e.clientY + 8 },
+            })
+          }, '', { fill: h.color, 'fill-opacity': '0.3' }
         )
       })
     })
@@ -149,6 +156,15 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
       })
     })
 
+    // 点击 iframe 内部时关闭选中工具栏
+    rendition.on('markClicked', () => { /* handled by highlight popup */ })
+    const handleIframeClick = () => {
+      setSelectionData(null)
+    }
+    rendition.hooks.content.register((contents: { document: Document }) => {
+      contents.document.addEventListener('mousedown', handleIframeClick)
+    })
+
     // 键盘切换章节（左右方向键）
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') rendition.next()
@@ -164,6 +180,23 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
     }
   }, [bookId, fileData])
 
+  const addHighlightAnnotation = (cfiRange: string, color: string) => {
+    renditionRef.current?.annotations.highlight(
+      cfiRange, {}, (e: MouseEvent) => {
+        e.stopPropagation()
+        setHighlightPopup({ cfiRange, position: { x: e.clientX, y: e.clientY + 8 } })
+      }, '', { fill: color, 'fill-opacity': '0.3' }
+    )
+  }
+
+  const handleRemoveHighlight = async () => {
+    if (!highlightPopup) return
+    const h = await db.highlights.where('bookId').equals(bookId).and(h => h.cfiRange === highlightPopup.cfiRange).first()
+    if (h?.id) await db.highlights.delete(h.id)
+    renditionRef.current?.annotations.remove(highlightPopup.cfiRange, 'highlight')
+    setHighlightPopup(null)
+  }
+
   const handleHighlight = async (color: string) => {
     if (!selectionData) return
     await db.highlights.add({
@@ -173,26 +206,13 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
       color,
       createdAt: Date.now(),
     })
-    renditionRef.current?.annotations.highlight(
-      selectionData.cfiRange, {}, () => {}, '', { fill: color, 'fill-opacity': '0.3' }
-    )
+    addHighlightAnnotation(selectionData.cfiRange, color)
     setSelectionData(null)
   }
 
-  const handleAddToNote = async (color: string) => {
+  const handleAddToNote = async () => {
     if (!selectionData) return
-    // 先高亮
-    await db.highlights.add({
-      bookId,
-      cfiRange: selectionData.cfiRange,
-      text: selectionData.text,
-      color,
-      createdAt: Date.now(),
-    })
-    renditionRef.current?.annotations.highlight(
-      selectionData.cfiRange, {}, () => {}, '', { fill: color, 'fill-opacity': '0.3' }
-    )
-    // 插入引用到笔记编辑器
+    // 仅插入引用到笔记编辑器，不做高亮
     const editor = (window as unknown as Record<string, unknown>).__tiptapEditor as
       { chain: () => { focus: () => { insertContent: (c: unknown) => { run: () => void } } } } | undefined
     if (editor) {
@@ -226,6 +246,21 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
           onAddToNote={handleAddToNote}
           onClose={() => setSelectionData(null)}
         />
+      )}
+
+      {highlightPopup && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setHighlightPopup(null)}
+        >
+          <button
+            className="fixed z-50 px-3 py-1.5 text-sm text-red-300 bg-gray-800 rounded-lg shadow-xl border border-gray-600 hover:bg-gray-700 select-none"
+            style={{ left: highlightPopup.position.x, top: highlightPopup.position.y }}
+            onClick={(e) => { e.stopPropagation(); handleRemoveHighlight() }}
+          >
+            取消高亮
+          </button>
+        </div>
       )}
     </div>
   )

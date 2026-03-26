@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const COLORS = ['#FBBF24', '#34D399', '#60A5FA', '#F87171', '#C084FC']
 
@@ -12,6 +12,21 @@ interface Props {
 export default function SelectionToolbar({ position, onHighlight, onAddToNote, onClose }: Props) {
   const [showColors, setShowColors] = useState(false)
   const [action, setAction] = useState<'highlight' | 'note' | null>(null)
+  const elRef = useRef<HTMLDivElement>(null)
+
+  // 点击外部关闭
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (elRef.current && !elRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    const timer = setTimeout(() => document.addEventListener('mousedown', handleClick), 0)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('mousedown', handleClick)
+    }
+  }, [onClose])
 
   const handleColorPick = (color: string) => {
     if (action === 'highlight') onHighlight(color)
@@ -23,6 +38,7 @@ export default function SelectionToolbar({ position, onHighlight, onAddToNote, o
 
   return (
     <div
+      ref={elRef}
       className="fixed z-50 bg-gray-800 rounded-lg shadow-xl border border-gray-600 p-1 flex gap-1 select-none"
       style={{ left: position.x, top: position.y }}
     >

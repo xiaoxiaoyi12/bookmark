@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import ePub, { type Rendition, type NavItem } from 'epubjs'
 import { db } from '../../db'
 import TableOfContents from './TableOfContents'
+import SelectionToolbar from './SelectionToolbar'
 import { useReaderStore } from '../../stores/useReaderStore'
 
 interface Props {
@@ -9,10 +10,17 @@ interface Props {
   fileData: ArrayBuffer
 }
 
+interface SelectionData {
+  text: string
+  cfiRange: string
+  position: { x: number; y: number }
+}
+
 export default function EpubReader({ bookId, fileData }: Props) {
   const viewerRef = useRef<HTMLDivElement>(null)
   const renditionRef = useRef<Rendition | null>(null)
   const [toc, setToc] = useState<NavItem[]>([])
+  const [selectionData, setSelectionData] = useState<SelectionData | null>(null)
   const { tocOpen } = useReaderStore()
 
   useEffect(() => {
@@ -57,6 +65,29 @@ export default function EpubReader({ bookId, fileData }: Props) {
       })
     })
 
+    // 文字选中事件
+    rendition.on('selected', (cfiRange: string) => {
+      const iframe = viewerRef.current?.querySelector('iframe')
+      const selection = iframe?.contentDocument?.getSelection()
+      if (!selection || selection.isCollapsed) return
+
+      const text = selection.toString().trim()
+      if (!text) return
+
+      const range = selection.getRangeAt(0)
+      const rect = range.getBoundingClientRect()
+      const iframeRect = iframe!.getBoundingClientRect()
+
+      setSelectionData({
+        text,
+        cfiRange,
+        position: {
+          x: iframeRect.left + rect.left + rect.width / 2 - 80,
+          y: iframeRect.top + rect.bottom + 8,
+        },
+      })
+    })
+
     // 键盘翻页
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') rendition.next()
@@ -70,6 +101,46 @@ export default function EpubReader({ bookId, fileData }: Props) {
       book.destroy()
     }
   }, [bookId, fileData])
+
+  const handleHighlight = async (color: string) => {
+    if (!selectionData) return
+    await db.highlights.add({
+      bookId,
+      cfiRange: selectionData.cfiRange,
+      text: selectionData.text,
+      color,
+      createdAt: Date.now(),
+    })
+    renditionRef.current?.annotations.highlight(
+      selectionData.cfiRange, {}, () => {}, '', { fill: color, 'fill-opacity': '0.3' }
+    )
+    setSelectionData(null)
+  }
+
+  const handleAddToNote = async (color: string) => {
+    if (!selectionData) return
+    // 先高亮
+    await db.highlights.add({
+      bookId,
+      cfiRange: selectionData.cfiRange,
+      text: selectionData.text,
+      color,
+      createdAt: Date.now(),
+    })
+    renditionRef.current?.annotations.highlight(
+      selectionData.cfiRange, {}, () => {}, '', { fill: color, 'fill-opacity': '0.3' }
+    )
+    // 插入引用到笔记编辑器
+    const editor = (window as unknown as Record<string, unknown>).__tiptapEditor as
+      { chain: () => { focus: () => { insertContent: (c: unknown) => { run: () => void } } } } | undefined
+    if (editor) {
+      editor.chain().focus().insertContent([
+        { type: 'blockquote', content: [{ type: 'paragraph', content: [{ type: 'text', text: selectionData.text }] }] },
+        { type: 'paragraph' },
+      ]).run()
+    }
+    setSelectionData(null)
+  }
 
   const handleTocSelect = (href: string) => {
     renditionRef.current?.display(href)
@@ -85,6 +156,15 @@ export default function EpubReader({ bookId, fileData }: Props) {
       <div className="flex-1 min-w-0">
         <div ref={viewerRef} className="h-full" />
       </div>
+
+      {selectionData && (
+        <SelectionToolbar
+          position={selectionData.position}
+          onHighlight={handleHighlight}
+          onAddToNote={handleAddToNote}
+          onClose={() => setSelectionData(null)}
+        />
+      )}
     </div>
   )
 }

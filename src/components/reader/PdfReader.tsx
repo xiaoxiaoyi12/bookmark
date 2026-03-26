@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
+import { TextLayer } from 'pdfjs-dist'
+import 'pdfjs-dist/web/pdf_viewer.css'
 import { db } from '../../db'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -12,11 +14,19 @@ interface Props {
   fileData: ArrayBuffer
 }
 
+const SCALE_STEP = 0.25
+const SCALE_MIN = 0.5
+const SCALE_MAX = 4
+
 export default function PdfReader({ bookId, fileData }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const textLayerRef = useRef<HTMLDivElement>(null)
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
+  const [scale, setScale] = useState(1.5)
+  const renderTaskRef = useRef<ReturnType<pdfjsLib.PDFPageProxy['render']> | null>(null)
 
   // 加载 PDF 文档
   useEffect(() => {
@@ -25,7 +35,6 @@ export default function PdfReader({ bookId, fileData }: Props) {
       setPdfDoc(doc)
       setTotalPages(doc.numPages)
 
-      // 恢复阅读进度
       const progress = await db.readingProgress.get(bookId)
       if (progress?.location) {
         setCurrentPage(Number(progress.location))
@@ -34,22 +43,51 @@ export default function PdfReader({ bookId, fileData }: Props) {
     load()
   }, [bookId, fileData])
 
-  // 渲染当前页
+  // 渲染当前页（canvas + text layer）
   useEffect(() => {
-    if (!pdfDoc || !canvasRef.current) return
+    if (!pdfDoc || !canvasRef.current || !textLayerRef.current) return
+
+    // 取消上一次渲染
+    if (renderTaskRef.current) {
+      renderTaskRef.current.cancel()
+      renderTaskRef.current = null
+    }
 
     const render = async () => {
       const page = await pdfDoc.getPage(currentPage)
-      const viewport = page.getViewport({ scale: 1.5 })
+      const viewport = page.getViewport({ scale })
       const canvas = canvasRef.current!
+      const textLayerDiv = textLayerRef.current!
+
       canvas.width = viewport.width
       canvas.height = viewport.height
 
-      await page.render({
+      const renderTask = page.render({
         canvasContext: canvas.getContext('2d')!,
         canvas,
         viewport,
-      }).promise
+      })
+      renderTaskRef.current = renderTask
+
+      try {
+        await renderTask.promise
+      } catch {
+        // render cancelled
+        return
+      }
+
+      // 清空并重建文字层
+      textLayerDiv.innerHTML = ''
+      textLayerDiv.style.width = `${viewport.width}px`
+      textLayerDiv.style.height = `${viewport.height}px`
+
+      const textContent = await page.getTextContent()
+      const textLayer = new TextLayer({
+        textContentSource: textContent,
+        container: textLayerDiv,
+        viewport,
+      })
+      await textLayer.render()
     }
     render()
 
@@ -59,11 +97,19 @@ export default function PdfReader({ bookId, fileData }: Props) {
       location: String(currentPage),
       updatedAt: Date.now(),
     })
-  }, [pdfDoc, currentPage, bookId])
+  }, [pdfDoc, currentPage, bookId, scale])
 
-  // 键盘翻页
+  // 缩放
+  const zoomIn = useCallback(() => setScale(s => Math.min(s + SCALE_STEP, SCALE_MAX)), [])
+  const zoomOut = useCallback(() => setScale(s => Math.max(s - SCALE_STEP, SCALE_MIN)), [])
+  const zoomReset = useCallback(() => setScale(1.5), [])
+
+  // 键盘：翻页 + 缩放
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '=') { e.preventDefault(); zoomIn() }
+      if ((e.metaKey || e.ctrlKey) && e.key === '-') { e.preventDefault(); zoomOut() }
+      if ((e.metaKey || e.ctrlKey) && e.key === '0') { e.preventDefault(); zoomReset() }
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         setCurrentPage(p => Math.min(p + 1, totalPages))
       }
@@ -73,12 +119,12 @@ export default function PdfReader({ bookId, fileData }: Props) {
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [totalPages])
+  }, [totalPages, zoomIn, zoomOut, zoomReset])
 
   return (
     <div className="h-full flex flex-col items-center">
-      {/* 翻页控制 */}
-      <div className="flex items-center gap-3 py-2 shrink-0">
+      {/* 工具栏：翻页 + 缩放 */}
+      <div className="flex items-center gap-3 py-2 shrink-0 flex-wrap justify-center">
         <button
           onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
           disabled={currentPage <= 1}
@@ -94,11 +140,32 @@ export default function PdfReader({ bookId, fileData }: Props) {
         >
           下一页 &rarr;
         </button>
+
+        <span className="text-gray-600 mx-1">|</span>
+
+        <button onClick={zoomOut} disabled={scale <= SCALE_MIN}
+          className="text-gray-400 hover:text-white disabled:opacity-30 text-sm px-1">
+          &minus;
+        </button>
+        <button onClick={zoomReset} className="text-gray-400 hover:text-white text-sm min-w-14 text-center">
+          {Math.round(scale * 100)}%
+        </button>
+        <button onClick={zoomIn} disabled={scale >= SCALE_MAX}
+          className="text-gray-400 hover:text-white disabled:opacity-30 text-sm px-1">
+          +
+        </button>
       </div>
 
-      {/* PDF 画布 */}
-      <div className="flex-1 overflow-auto flex justify-center">
-        <canvas ref={canvasRef} />
+      {/* PDF 画布 + 文字层 */}
+      <div ref={containerRef} className="flex-1 overflow-auto flex justify-center">
+        <div className="relative" style={{ display: 'inline-block' }}>
+          <canvas ref={canvasRef} />
+          <div
+            ref={textLayerRef}
+            className="textLayer"
+            style={{ position: 'absolute', top: 0, left: 0 }}
+          />
+        </div>
       </div>
     </div>
   )

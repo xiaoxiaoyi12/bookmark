@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { TextLayer } from 'pdfjs-dist'
 import { db } from '../../db'
 import SelectionToolbar from './SelectionToolbar'
+import type { SearchResult, ReaderHandle } from '../../types'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
@@ -25,7 +26,7 @@ interface SelectionData {
   position: { x: number; y: number }
 }
 
-export default function PdfReader({ bookId, fileData }: Props) {
+export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, fileData }, ref) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null)
   const [totalPages, setTotalPages] = useState(0)
@@ -39,6 +40,37 @@ export default function PdfReader({ bookId, fileData }: Props) {
   const renderedPages = useRef<Set<number>>(new Set())
   // 是否正在恢复进度滚动
   const restoringScroll = useRef(false)
+
+  useImperativeHandle(ref, () => ({
+    async search(query: string): Promise<SearchResult[]> {
+      if (!pdfDoc || !query.trim()) return []
+      const results: SearchResult[] = []
+      const q = query.toLowerCase()
+
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const page = await pdfDoc.getPage(i)
+        const content = await page.getTextContent()
+        const pageText = content.items.map((item) => ('str' in item ? item.str : '')).join(' ')
+        const lower = pageText.toLowerCase()
+
+        let idx = lower.indexOf(q)
+        while (idx !== -1) {
+          const start = Math.max(0, idx - 30)
+          const end = Math.min(pageText.length, idx + query.length + 30)
+          const excerpt = (start > 0 ? '...' : '') + pageText.slice(start, end) + (end < pageText.length ? '...' : '')
+          results.push({ type: 'content', text: excerpt, page: i })
+          idx = lower.indexOf(q, idx + 1)
+        }
+      }
+      return results
+    },
+    goTo(result: SearchResult) {
+      if (result.page) {
+        const el = pageRefs.current.get(result.page)
+        if (el) el.scrollIntoView({ behavior: 'smooth' })
+      }
+    },
+  }), [pdfDoc])
 
   // 加载 PDF
   useEffect(() => {
@@ -458,4 +490,4 @@ export default function PdfReader({ bookId, fileData }: Props) {
       )}
     </div>
   )
-}
+})

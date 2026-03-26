@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react'
 import ePub, { type Rendition, type NavItem } from 'epubjs'
+import type Book from 'epubjs/types/book'
 import { db } from '../../db'
 import TableOfContents from './TableOfContents'
 import SelectionToolbar from './SelectionToolbar'
 import { useReaderStore } from '../../stores/useReaderStore'
+import type { SearchResult, ReaderHandle } from '../../types'
 
 interface Props {
   bookId: number
@@ -16,17 +18,55 @@ interface SelectionData {
   position: { x: number; y: number }
 }
 
-export default function EpubReader({ bookId, fileData }: Props) {
+export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fileData }, ref) {
   const viewerRef = useRef<HTMLDivElement>(null)
   const renditionRef = useRef<Rendition | null>(null)
+  const bookRef = useRef<Book | null>(null)
   const [toc, setToc] = useState<NavItem[]>([])
   const [selectionData, setSelectionData] = useState<SelectionData | null>(null)
   const { tocOpen } = useReaderStore()
+
+  useImperativeHandle(ref, () => ({
+    async search(query: string): Promise<SearchResult[]> {
+      const book = bookRef.current
+      if (!book || !query.trim()) return []
+
+      const results: SearchResult[] = []
+      const q = query.toLowerCase()
+      const spine = book.spine as unknown as { each: (fn: (item: { load: (fn: (doc: Document) => Promise<Document>) => Promise<Document>, find: (q: string) => { cfi: string; excerpt: string }[] }) => void) => void }
+
+      const items: { load: (fn: (doc: Document) => Promise<Document>) => Promise<Document>, find: (q: string) => { cfi: string; excerpt: string }[] }[] = []
+      spine.each((item) => items.push(item))
+
+      for (const item of items) {
+        try {
+          await item.load(book.load.bind(book) as (doc: Document) => Promise<Document>)
+          const matches = item.find(q)
+          for (const m of matches) {
+            results.push({
+              type: 'content',
+              text: m.excerpt.trim(),
+              location: m.cfi,
+            })
+          }
+        } catch {
+          // skip chapters that fail to load
+        }
+      }
+      return results
+    },
+    goTo(result: SearchResult) {
+      if (result.location) {
+        renditionRef.current?.display(result.location)
+      }
+    },
+  }), [])
 
   useEffect(() => {
     if (!viewerRef.current) return
 
     const book = ePub(fileData)
+    bookRef.current = book as unknown as Book
     const rendition = book.renderTo(viewerRef.current, {
       width: '100%',
       height: '100%',
@@ -117,6 +157,7 @@ export default function EpubReader({ bookId, fileData }: Props) {
       document.removeEventListener('keydown', handleKeyDown)
       rendition.destroy()
       book.destroy()
+      bookRef.current = null
     }
   }, [bookId, fileData])
 
@@ -185,4 +226,4 @@ export default function EpubReader({ bookId, fileData }: Props) {
       )}
     </div>
   )
-}
+})

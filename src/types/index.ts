@@ -29,3 +29,15 @@ export interface ReadingProgress {
   location: string            // EPUB CFI 或 PDF 页码
   updatedAt: number
 }
+
+export interface SearchResult {
+  type: 'content' | 'note' | 'highlight'
+  text: string                // 匹配摘要
+  location?: string           // EPUB CFI 或 PDF 页码
+  page?: number               // PDF 页码
+}
+
+export interface ReaderHandle {
+  search: (query: string) => Promise<SearchResult[]>
+  goTo: (result: SearchResult) => void
+}

@@ -10,6 +10,7 @@ export default function LibraryPage() {
   const [books, setBooks] = useState<Book[]>([])
   const [importing, setImporting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const loadBooks = useCallback(async () => {
@@ -18,6 +19,10 @@ export default function LibraryPage() {
   }, [])
 
   useEffect(() => { loadBooks() }, [loadBooks])
+
+  const filteredBooks = searchQuery.trim()
+    ? books.filter(b => b.title.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+    : books
 
   // toast 自动消失
   useEffect(() => {
@@ -55,7 +60,16 @@ export default function LibraryPage() {
   return (
     <div className="min-h-screen bg-[#faf6f0] dark:bg-gray-900 p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-amber-900 dark:text-white">BookMark</h1>
+        <div className="flex items-center gap-3">
+          <a
+            href="https://xiaoxiaoyi12.github.io/"
+            className="text-amber-700 hover:text-amber-900 dark:text-gray-400 dark:hover:text-white text-sm"
+            title="返回主页"
+          >
+            &larr;
+          </a>
+          <h1 className="text-2xl font-bold text-amber-900 dark:text-white">BookMark</h1>
+        </div>
         <div className="flex gap-2 select-none items-center">
           <ThemeToggle />
           <button
@@ -81,8 +95,26 @@ export default function LibraryPage() {
         </div>
       </div>
       <ImportDropzone onImported={loadBooks} />
-      <div className="mt-8">
-        <BookGrid books={books} onChanged={loadBooks} />
+
+      {/* 搜索栏 */}
+      {books.length > 0 && (
+        <div className="mt-6 relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400 dark:text-gray-500" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="6.5" cy="6.5" r="4.5" />
+            <path d="M10 10l4 4" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="搜索书名..."
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-amber-200 bg-white placeholder-amber-400 text-amber-900 outline-none focus:border-amber-400 transition-colors dark:bg-gray-800 dark:border-gray-700 dark:placeholder-gray-500 dark:text-gray-200 dark:focus:border-gray-500"
+          />
+        </div>
+      )}
+
+      <div className="mt-4">
+        <BookGrid books={filteredBooks} onChanged={loadBooks} />
       </div>
 
       {/* Toast */}

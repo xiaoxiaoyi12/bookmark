@@ -52,15 +52,15 @@ export default function SelectionToolbar({ position, onHighlight, onAddToNote, o
           </button>
           <button
             className="px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700 rounded"
-            onClick={() => { setAction('note'); setShowColors(true) }}
+            onClick={() => { navigator.clipboard.writeText(window.getSelection()?.toString() || ''); window.getSelection()?.removeAllRanges(); onClose() }}
           >
-            添加到笔记
+            复制
           </button>
           <button
             className="px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700 rounded"
-            onClick={() => { navigator.clipboard.writeText(window.getSelection()?.toString() || ''); onClose() }}
+            onClick={() => { onAddToNote(COLORS[0]); onClose() }}
           >
-            复制
+            添加到笔记
           </button>
         </>
       ) : (

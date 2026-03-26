@@ -76,14 +76,14 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
   if (!editor) return null
 
   const btn = (active: boolean) =>
-    `px-1.5 py-1 text-xs rounded transition-colors ${active ? 'bg-blue-600/80 text-white' : 'text-gray-400 hover:bg-gray-700/60 hover:text-gray-200'}`
+    `px-1.5 py-1 text-xs rounded transition-colors ${active ? 'bg-blue-600/80 text-white' : 'text-amber-700 hover:bg-amber-100 hover:text-amber-900 dark:text-gray-400 dark:hover:bg-gray-700/60 dark:hover:text-gray-200'}`
 
   const currentColor = editor.getAttributes('textStyle').color || ''
 
   return (
     <div className="flex flex-col h-full">
       {/* 工具栏 */}
-      <div className="flex gap-0.5 px-2 py-1.5 border-b border-gray-700/80 shrink-0 flex-wrap items-center select-none">
+      <div className="flex gap-0.5 px-2 py-1.5 border-b border-amber-200/80 dark:border-gray-700/80 shrink-0 flex-wrap items-center select-none">
         <button onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           className={btn(editor.isActive('heading', { level: 2 }))} title="二级标题">
           H2
@@ -93,7 +93,7 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
           H3
         </button>
 
-        <span className="w-px h-3.5 bg-gray-700/60 mx-1" />
+        <span className="w-px h-3.5 bg-amber-200/60 dark:bg-gray-700/60 mx-1" />
 
         <button onClick={() => editor.chain().focus().toggleBold().run()}
           className={btn(editor.isActive('bold'))} title="粗体">
@@ -116,7 +116,7 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
           <span className="font-mono text-[10px]">&lt;/&gt;</span>
         </button>
 
-        <span className="w-px h-3.5 bg-gray-700/60 mx-1" />
+        <span className="w-px h-3.5 bg-amber-200/60 dark:bg-gray-700/60 mx-1" />
 
         {/* 字体颜色 */}
         <div className="relative">
@@ -133,10 +133,10 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
           </button>
           {showColorPicker === 'text' && (
             <div
-              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-600/50 z-50"
+              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-2xl border border-amber-200/50 dark:border-gray-600/50 z-50"
               onClick={e => e.stopPropagation()}
             >
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 font-medium">文字颜色</p>
+              <p className="text-[10px] text-amber-500 dark:text-gray-500 uppercase tracking-wider mb-2 font-medium">文字颜色</p>
               <div className="flex gap-2">
                 {TEXT_COLORS.map(c => {
                   const isActive = c.value ? currentColor === c.value : !currentColor
@@ -158,7 +158,7 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
                     >
                       {!c.value ? (
                         <span className="flex items-center justify-center w-full h-full">
-                          <svg className="w-3 h-3 text-gray-500" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg className="w-3 h-3 text-amber-400 dark:text-gray-500" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
                             <line x1="2" y1="2" x2="10" y2="10" />
                             <line x1="10" y1="2" x2="2" y2="10" />
                           </svg>
@@ -187,10 +187,10 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
           </button>
           {showColorPicker === 'bg' && (
             <div
-              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-600/50 z-50"
+              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-2xl border border-amber-200/50 dark:border-gray-600/50 z-50"
               onClick={e => e.stopPropagation()}
             >
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 font-medium">背景高亮</p>
+              <p className="text-[10px] text-amber-500 dark:text-gray-500 uppercase tracking-wider mb-2 font-medium">背景高亮</p>
               <div className="flex gap-2">
                 {HIGHLIGHT_COLORS.map(c => {
                   const isActive = c.value
@@ -214,7 +214,7 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
                     >
                       {!c.value ? (
                         <span className="flex items-center justify-center w-full h-full">
-                          <svg className="w-3 h-3 text-gray-500" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg className="w-3 h-3 text-amber-400 dark:text-gray-500" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
                             <line x1="2" y1="2" x2="10" y2="10" />
                             <line x1="10" y1="2" x2="2" y2="10" />
                           </svg>
@@ -232,7 +232,7 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
           )}
         </div>
 
-        <span className="w-px h-3.5 bg-gray-700/60 mx-1" />
+        <span className="w-px h-3.5 bg-amber-200/60 dark:bg-gray-700/60 mx-1" />
 
         <button onClick={() => editor.chain().focus().toggleBulletList().run()}
           className={btn(editor.isActive('bulletList'))} title="无序列表">
@@ -253,7 +253,7 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
           </span>
         </button>
 
-        <span className="w-px h-3.5 bg-gray-700/60 mx-1" />
+        <span className="w-px h-3.5 bg-amber-200/60 dark:bg-gray-700/60 mx-1" />
 
         <button onClick={() => editor.chain().focus().toggleBlockquote().run()}
           className={btn(editor.isActive('blockquote'))} title="引用">
@@ -284,7 +284,7 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
       {/* 编辑器 */}
       <EditorContent
         editor={editor}
-        className="flex-1 overflow-y-auto p-4 prose prose-invert prose-sm max-w-none"
+        className="flex-1 overflow-y-auto p-4 prose prose-sm max-w-none dark:prose-invert"
       />
     </div>
   )

@@ -40,25 +40,25 @@ export default function SelectionToolbar({ position, selectedText, onHighlight, 
   return (
     <div
       ref={elRef}
-      className="fixed z-50 bg-gray-800 rounded-lg shadow-xl border border-gray-600 p-1 flex gap-1 select-none"
+      className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-amber-200 dark:border-gray-600 p-1 flex gap-1 select-none"
       style={{ left: position.x, top: position.y }}
     >
       {!showColors ? (
         <>
           <button
-            className="px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700 rounded"
+            className="px-3 py-1.5 text-sm text-amber-800 hover:bg-amber-100 dark:text-gray-200 dark:hover:bg-gray-700 rounded"
             onClick={() => { setAction('highlight'); setShowColors(true) }}
           >
             高亮
           </button>
           <button
-            className="px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700 rounded"
+            className="px-3 py-1.5 text-sm text-amber-800 hover:bg-amber-100 dark:text-gray-200 dark:hover:bg-gray-700 rounded"
             onClick={() => { navigator.clipboard.writeText(selectedText); onClose() }}
           >
             复制
           </button>
           <button
-            className="px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700 rounded"
+            className="px-3 py-1.5 text-sm text-amber-800 hover:bg-amber-100 dark:text-gray-200 dark:hover:bg-gray-700 rounded"
             onClick={() => { onAddToNote(); onClose() }}
           >
             添加到笔记

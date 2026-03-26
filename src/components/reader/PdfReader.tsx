@@ -496,30 +496,30 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
         <button
           onClick={() => scrollToPage(Math.max(currentPage - 1, 1))}
           disabled={currentPage <= 1}
-          className="text-gray-400 hover:text-white disabled:opacity-30 text-sm"
+          className="text-amber-700 hover:text-amber-900 disabled:opacity-30 text-sm dark:text-gray-400 dark:hover:text-white"
         >
           &larr; 上一页
         </button>
-        <span className="text-gray-400 text-sm">{currentPage} / {totalPages}</span>
+        <span className="text-amber-600 dark:text-gray-400 text-sm">{currentPage} / {totalPages}</span>
         <button
           onClick={() => scrollToPage(Math.min(currentPage + 1, totalPages))}
           disabled={currentPage >= totalPages}
-          className="text-gray-400 hover:text-white disabled:opacity-30 text-sm"
+          className="text-amber-700 hover:text-amber-900 disabled:opacity-30 text-sm dark:text-gray-400 dark:hover:text-white"
         >
           下一页 &rarr;
         </button>
 
-        <span className="text-gray-600 mx-1">|</span>
+        <span className="text-amber-300 dark:text-gray-600 mx-1">|</span>
 
         <button onClick={zoomOut} disabled={scale <= SCALE_MIN}
-          className="text-gray-400 hover:text-white disabled:opacity-30 text-sm px-1">
+          className="text-amber-700 hover:text-amber-900 disabled:opacity-30 text-sm px-1 dark:text-gray-400 dark:hover:text-white">
           &minus;
         </button>
-        <button onClick={zoomReset} className="text-gray-400 hover:text-white text-sm min-w-14 text-center">
+        <button onClick={zoomReset} className="text-amber-700 hover:text-amber-900 text-sm min-w-14 text-center dark:text-gray-400 dark:hover:text-white">
           {Math.round(scale * 100)}%
         </button>
         <button onClick={zoomIn} disabled={scale >= SCALE_MAX}
-          className="text-gray-400 hover:text-white disabled:opacity-30 text-sm px-1">
+          className="text-amber-700 hover:text-amber-900 disabled:opacity-30 text-sm px-1 dark:text-gray-400 dark:hover:text-white">
           +
         </button>
       </div>
@@ -558,7 +558,7 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
           onClick={() => setHighlightPopup(null)}
         >
           <button
-            className="fixed z-50 px-3 py-1.5 text-sm text-red-300 bg-gray-800 rounded-lg shadow-xl border border-gray-600 hover:bg-gray-700 select-none"
+            className="fixed z-50 px-3 py-1.5 text-sm text-red-600 bg-white dark:text-red-300 dark:bg-gray-800 rounded-lg shadow-xl border border-amber-200 dark:border-gray-600 hover:bg-amber-50 dark:hover:bg-gray-700 select-none"
             style={{ left: highlightPopup.position.x, top: highlightPopup.position.y }}
             onClick={(e) => { e.stopPropagation(); handleRemoveHighlight() }}
           >

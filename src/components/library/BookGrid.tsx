@@ -8,7 +8,7 @@ interface Props {
 
 export default function BookGrid({ books, onChanged }: Props) {
   if (books.length === 0) {
-    return <p className="text-gray-500 text-center py-12">还没有书籍，导入一本开始吧。</p>
+    return <p className="text-amber-600/50 dark:text-gray-500 text-center py-12">还没有书籍，导入一本开始吧。</p>
   }
 
   return (

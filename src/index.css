@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 护眼模式（亮色）— 暖色调 */
 body {
+  background-color: #faf6f0;
+  color: #3d3929;
+}
+.dark body {
   background-color: #111827;
   color: #f3f4f6;
 }
@@ -12,33 +19,44 @@ body {
 
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
-  color: #6b7280;
+  color: #a0977e;
   pointer-events: none;
   float: left;
   height: 0;
 }
+.dark .tiptap p.is-editor-empty:first-child::before {
+  color: #6b7280;
+}
 
 .tiptap blockquote {
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid #8b7e56;
   padding-left: 1rem;
-  color: #9ca3af;
+  color: #7a7160;
   margin: 0.5rem 0;
+}
+.dark .tiptap blockquote {
+  border-left-color: #3b82f6;
+  color: #9ca3af;
 }
 
 /* 行内代码 */
 .tiptap code {
-  background: #1f2937;
-  color: #f472b6;
+  background: #ede8dc;
+  color: #b4637a;
   padding: 0.15em 0.4em;
   border-radius: 4px;
   font-size: 0.85em;
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
 }
+.dark .tiptap code {
+  background: #1f2937;
+  color: #f472b6;
+}
 
 /* 代码块 */
 .tiptap .tiptap-code-block {
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: #f0ebe0;
+  border: 1px solid #ddd5c4;
   border-radius: 6px;
   padding: 0.75rem 1rem;
   margin: 0.5rem 0;
@@ -46,6 +64,11 @@ body {
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
   font-size: 0.85em;
   line-height: 1.6;
+  color: #3d3929;
+}
+.dark .tiptap .tiptap-code-block {
+  background: #0d1117;
+  border-color: #30363d;
   color: #e6edf3;
 }
 .tiptap .tiptap-code-block code {
@@ -91,19 +114,26 @@ body {
   appearance: none;
   width: 16px;
   height: 16px;
-  border: 2px solid #4b5563;
+  border: 2px solid #c4b899;
   border-radius: 3px;
   background: transparent;
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
 }
+.dark .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+  border-color: #4b5563;
+}
 .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  background: #8b7e56;
+  border-color: #8b7e56;
+}
+.dark .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
   background: #3b82f6;
   border-color: #3b82f6;
 }
 .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
-  content: '✓';
+  content: '\2713';
   color: white;
   font-size: 11px;
   position: absolute;
@@ -112,19 +142,28 @@ body {
 }
 .tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
   text-decoration: line-through;
+  color: #a0977e;
+}
+.dark .tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
   color: #6b7280;
 }
 
 /* 分割线 */
 .tiptap hr {
   border: none;
-  border-top: 1px solid #374151;
+  border-top: 1px solid #ddd5c4;
   margin: 1rem 0;
+}
+.dark .tiptap hr {
+  border-top-color: #374151;
 }
 
 /* 删除线 */
 .tiptap s {
   text-decoration: line-through;
+  color: #a0977e;
+}
+.dark .tiptap s {
   color: #9ca3af;
 }
 
@@ -133,12 +172,18 @@ body {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0.75rem 0 0.25rem;
+  color: #3d3929;
+}
+.dark .tiptap h2 {
   color: #f3f4f6;
 }
 .tiptap h3 {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0.5rem 0 0.25rem;
+  color: #4a4535;
+}
+.dark .tiptap h3 {
   color: #e5e7eb;
 }
 

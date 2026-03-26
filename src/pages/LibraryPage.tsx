@@ -4,6 +4,7 @@ import type { Book } from '../types'
 import ImportDropzone from '../components/library/ImportDropzone'
 import BookGrid from '../components/library/BookGrid'
 import { exportBackup, importBackup } from '../utils/backup'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function LibraryPage() {
   const [books, setBooks] = useState<Book[]>([])
@@ -52,20 +53,21 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
+    <div className="min-h-screen bg-[#faf6f0] dark:bg-gray-900 p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">BookMark</h1>
-        <div className="flex gap-2 select-none">
+        <h1 className="text-2xl font-bold text-amber-900 dark:text-white">BookMark</h1>
+        <div className="flex gap-2 select-none items-center">
+          <ThemeToggle />
           <button
             onClick={handleExport}
-            className="px-3 py-1.5 text-sm text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
+            className="px-3 py-1.5 text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-700"
           >
             导出备份
           </button>
           <button
             onClick={() => fileRef.current?.click()}
             disabled={importing}
-            className="px-3 py-1.5 text-sm text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors disabled:opacity-50"
+            className="px-3 py-1.5 text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors disabled:opacity-50 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-700"
           >
             {importing ? '导入中...' : '导入备份'}
           </button>
@@ -85,7 +87,7 @@ export default function LibraryPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-gray-800 text-sm text-gray-200 rounded-lg shadow-xl border border-gray-700 animate-fade-in">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-amber-50 text-sm text-amber-900 rounded-lg shadow-xl border border-amber-200 animate-fade-in dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700">
           {toast}
         </div>
       )}

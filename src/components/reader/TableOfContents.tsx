@@ -11,7 +11,7 @@ export default function TableOfContents({ items, onSelect }: Props) {
       {navItems.map((item, i) => (
         <li key={i}>
           <button
-            className="w-full text-left px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-700 rounded truncate"
+            className="w-full text-left px-3 py-1.5 text-sm text-amber-800 hover:bg-amber-100 dark:text-gray-300 dark:hover:bg-gray-700 rounded truncate"
             style={{ paddingLeft: `${12 + depth * 16}px` }}
             onClick={() => onSelect(item.href)}
           >
@@ -25,7 +25,7 @@ export default function TableOfContents({ items, onSelect }: Props) {
 
   return (
     <nav className="h-full overflow-y-auto py-2">
-      <h2 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">目录</h2>
+      <h2 className="px-3 py-2 text-xs font-semibold text-amber-600/50 dark:text-gray-500 uppercase">目录</h2>
       {renderItems(items)}
     </nav>
   )

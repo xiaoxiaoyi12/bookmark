@@ -7,6 +7,7 @@ import EpubReader from '../components/reader/EpubReader'
 import PdfReader from '../components/reader/PdfReader'
 import NotePanel from '../components/notes/NotePanel'
 import SearchBar from '../components/reader/SearchBar'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function ReaderPage() {
   const { bookId } = useParams<{ bookId: string }>()
@@ -42,17 +43,18 @@ export default function ReaderPage() {
     }
   }, [])
 
-  if (!book) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-gray-400">加载中...</div>
+  if (!book) return <div className="min-h-screen bg-[#faf6f0] dark:bg-gray-900 flex items-center justify-center text-amber-700 dark:text-gray-400">加载中...</div>
 
   return (
-    <div className="h-screen bg-gray-900 flex flex-col">
+    <div className="h-screen bg-[#faf6f0] dark:bg-gray-900 flex flex-col">
       {/* 顶部工具栏 */}
-      <div className="h-12 border-b border-gray-700 flex items-center px-4 shrink-0 relative select-none">
-        <button onClick={() => navigate('/')} className="text-gray-400 hover:text-white text-sm mr-4">&larr; 书库</button>
-        <h1 className="text-sm text-white font-medium truncate flex-1">{book.title}</h1>
-        <button onClick={toggleSearch} className={`text-sm mx-2 transition-colors ${searchOpen ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`}>搜索</button>
-        <button onClick={toggleToc} className="text-gray-400 hover:text-white text-sm mx-2">目录</button>
-        <button onClick={toggleNote} className="text-gray-400 hover:text-white text-sm">笔记</button>
+      <div className="h-12 border-b border-amber-200 dark:border-gray-700 flex items-center px-4 shrink-0 relative select-none">
+        <button onClick={() => navigate('/')} className="text-amber-700 hover:text-amber-900 dark:text-gray-400 dark:hover:text-white text-sm mr-4">&larr; 书库</button>
+        <h1 className="text-sm text-amber-900 dark:text-white font-medium truncate flex-1">{book.title}</h1>
+        <button onClick={toggleSearch} className={`text-sm mx-2 transition-colors ${searchOpen ? 'text-blue-500 dark:text-blue-400' : 'text-amber-700 hover:text-amber-900 dark:text-gray-400 dark:hover:text-white'}`}>搜索</button>
+        <button onClick={toggleToc} className="text-amber-700 hover:text-amber-900 dark:text-gray-400 dark:hover:text-white text-sm mx-2">目录</button>
+        <button onClick={toggleNote} className="text-amber-700 hover:text-amber-900 dark:text-gray-400 dark:hover:text-white text-sm mr-2">笔记</button>
+        <ThemeToggle />
 
         {book.id && (
           <SearchBar bookId={book.id} readerRef={readerRef} />
@@ -72,13 +74,13 @@ export default function ReaderPage() {
 
         {noteOpen && (
           <div
-            className="w-1 bg-gray-700 hover:bg-blue-500 cursor-col-resize shrink-0"
+            className="w-1 bg-amber-200 hover:bg-blue-500 dark:bg-gray-700 dark:hover:bg-blue-500 cursor-col-resize shrink-0"
             onMouseDown={() => { resizing.current = true }}
           />
         )}
 
         {noteOpen && book.id && (
-          <div className="border-l border-gray-700 shrink-0" style={{ width: noteWidth }}>
+          <div className="border-l border-amber-200 dark:border-gray-700 shrink-0" style={{ width: noteWidth }}>
             <NotePanel bookId={book.id} readerRef={readerRef} />
           </div>
         )}

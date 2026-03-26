@@ -5,6 +5,7 @@ import { db } from '../../db'
 import TableOfContents from './TableOfContents'
 import SelectionToolbar from './SelectionToolbar'
 import { useReaderStore } from '../../stores/useReaderStore'
+import { useThemeStore } from '../../stores/useThemeStore'
 import type { SearchResult, ReaderHandle, Highlight } from '../../types'
 
 interface Props {
@@ -18,6 +19,38 @@ interface SelectionData {
   position: { x: number; y: number }
 }
 
+const LIGHT_THEME = {
+  'body': {
+    'color': '#3d3929 !important',
+    'background': '#faf6f0 !important',
+  },
+  'p, div, span, li, td, th, dd, dt': {
+    'color': '#3d3929 !important',
+  },
+  'h1, h2, h3, h4, h5, h6': {
+    'color': '#2d2518 !important',
+  },
+  'a': {
+    'color': '#8b6914 !important',
+  },
+}
+
+const DARK_THEME = {
+  'body': {
+    'color': '#e5e7eb !important',
+    'background': '#111827 !important',
+  },
+  'p, div, span, li, td, th, dd, dt': {
+    'color': '#e5e7eb !important',
+  },
+  'h1, h2, h3, h4, h5, h6': {
+    'color': '#f3f4f6 !important',
+  },
+  'a': {
+    'color': '#60a5fa !important',
+  },
+}
+
 export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fileData }, ref) {
   const viewerRef = useRef<HTMLDivElement>(null)
   const renditionRef = useRef<Rendition | null>(null)
@@ -26,6 +59,7 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
   const [selectionData, setSelectionData] = useState<SelectionData | null>(null)
   const [highlightPopup, setHighlightPopup] = useState<{ cfiRange: string; position: { x: number; y: number } } | null>(null)
   const { tocOpen } = useReaderStore()
+  const resolved = useThemeStore(s => s.resolved)
 
   useImperativeHandle(ref, () => ({
     async search(query: string): Promise<SearchResult[]> {
@@ -66,6 +100,19 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
     },
   }), [])
 
+  // 主题变化时更新 EPUB 内容样式
+  useEffect(() => {
+    const rendition = renditionRef.current
+    if (!rendition) return
+    const theme = resolved === 'dark' ? DARK_THEME : LIGHT_THEME
+    rendition.themes.default(theme)
+    // 强制重新渲染当前位置以应用新主题
+    const loc = rendition.location
+    if (loc?.start?.cfi) {
+      rendition.display(loc.start.cfi)
+    }
+  }, [resolved])
+
   useEffect(() => {
     if (!viewerRef.current) return
 
@@ -80,22 +127,9 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
 
     renditionRef.current = rendition
 
-    // 注入暗色主题样式到 EPUB iframe
-    rendition.themes.default({
-      'body': {
-        'color': '#e5e7eb !important',
-        'background': '#111827 !important',
-      },
-      'p, div, span, li, td, th, dd, dt': {
-        'color': '#e5e7eb !important',
-      },
-      'h1, h2, h3, h4, h5, h6': {
-        'color': '#f3f4f6 !important',
-      },
-      'a': {
-        'color': '#60a5fa !important',
-      },
-    })
+    // 根据当前主题注入样式
+    const theme = useThemeStore.getState().resolved === 'dark' ? DARK_THEME : LIGHT_THEME
+    rendition.themes.default(theme)
 
     // 加载保存的阅读进度，或从头开始
     db.readingProgress.get(bookId).then(progress => {
@@ -252,7 +286,7 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
   return (
     <div className="flex h-full">
       {tocOpen && (
-        <div className="w-60 border-r border-gray-700 shrink-0">
+        <div className="w-60 border-r border-amber-200 dark:border-gray-700 shrink-0">
           <TableOfContents items={toc} onSelect={handleTocSelect} />
         </div>
       )}
@@ -276,7 +310,7 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
           onClick={() => setHighlightPopup(null)}
         >
           <button
-            className="fixed z-50 px-3 py-1.5 text-sm text-red-300 bg-gray-800 rounded-lg shadow-xl border border-gray-600 hover:bg-gray-700 select-none"
+            className="fixed z-50 px-3 py-1.5 text-sm text-red-600 bg-white dark:text-red-300 dark:bg-gray-800 rounded-lg shadow-xl border border-amber-200 dark:border-gray-600 hover:bg-amber-50 dark:hover:bg-gray-700 select-none"
             style={{ left: highlightPopup.position.x, top: highlightPopup.position.y }}
             onClick={(e) => { e.stopPropagation(); handleRemoveHighlight() }}
           >

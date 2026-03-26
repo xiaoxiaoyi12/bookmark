@@ -46,7 +46,7 @@ export default function ImportDropzone({ onImported }: Props) {
 
   return (
     <div
-      className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
+      className="border-2 border-dashed border-amber-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-amber-400 dark:hover:border-gray-400 transition-colors"
       onDragOver={e => e.preventDefault()}
       onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files) }}
       onClick={() => {
@@ -58,7 +58,7 @@ export default function ImportDropzone({ onImported }: Props) {
         input.click()
       }}
     >
-      <p className="text-gray-400 text-lg">拖拽 EPUB / PDF 文件到这里，或点击导入</p>
+      <p className="text-amber-700/70 dark:text-gray-400 text-lg">拖拽 EPUB / PDF 文件到这里，或点击导入</p>
     </div>
   )
 }

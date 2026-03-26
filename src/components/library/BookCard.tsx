@@ -22,20 +22,20 @@ export default function BookCard({ book, onDeleted }: Props) {
 
   return (
     <div
-      className="group relative bg-gray-800 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+      className="group relative bg-amber-50 dark:bg-gray-800 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
       onClick={() => navigate(`/read/${book.id}`)}
     >
-      <div className="aspect-[3/4] bg-gray-700 flex items-center justify-center">
+      <div className="aspect-[3/4] bg-amber-100 dark:bg-gray-700 flex items-center justify-center">
         {book.coverUrl ? (
           <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
         ) : (
-          <span className="text-4xl text-gray-500">📖</span>
+          <span className="text-4xl text-amber-300 dark:text-gray-500">📖</span>
         )}
       </div>
       <div className="p-3">
-        <h3 className="text-sm font-medium text-white truncate">{book.title}</h3>
-        <p className="text-xs text-gray-400 truncate">{book.author}</p>
-        <span className="text-xs text-gray-500 uppercase">{book.format}</span>
+        <h3 className="text-sm font-medium text-amber-900 dark:text-white truncate">{book.title}</h3>
+        <p className="text-xs text-amber-700/70 dark:text-gray-400 truncate">{book.author}</p>
+        <span className="text-xs text-amber-600/50 dark:text-gray-500 uppercase">{book.format}</span>
       </div>
       <button
         onClick={handleDelete}

@@ -54,7 +54,7 @@ export default function NotePanel({ bookId, readerRef }: Props) {
 
   return (
     <div className="h-full flex flex-col">
-      <h2 className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-700 shrink-0">
+      <h2 className="px-4 py-2 text-xs font-semibold text-amber-600/50 dark:text-gray-500 uppercase border-b border-amber-200 dark:border-gray-700 shrink-0">
         笔记
       </h2>
       <TiptapEditor content={note?.content || ""} onUpdate={handleUpdate} />

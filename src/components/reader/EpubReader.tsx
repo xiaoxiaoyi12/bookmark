@@ -35,6 +35,23 @@ export default function EpubReader({ bookId, fileData }: Props) {
 
     renditionRef.current = rendition
 
+    // 注入暗色主题样式到 EPUB iframe
+    rendition.themes.default({
+      'body': {
+        'color': '#e5e7eb !important',
+        'background': '#111827 !important',
+      },
+      'p, div, span, li, td, th, dd, dt': {
+        'color': '#e5e7eb !important',
+      },
+      'h1, h2, h3, h4, h5, h6': {
+        'color': '#f3f4f6 !important',
+      },
+      'a': {
+        'color': '#60a5fa !important',
+      },
+    })
+
     // 加载保存的阅读进度，或从头开始
     db.readingProgress.get(bookId).then(progress => {
       if (progress?.location) {

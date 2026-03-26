@@ -1,1 +1,26 @@
 @import "tailwindcss";
+
+body {
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
+.tiptap {
+  outline: none;
+  min-height: 200px;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #6b7280;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid #3b82f6;
+  padding-left: 1rem;
+  color: #9ca3af;
+  margin: 0.5rem 0;
+}

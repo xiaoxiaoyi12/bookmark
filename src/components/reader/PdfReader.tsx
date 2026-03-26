@@ -33,6 +33,7 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
   const [currentPage, setCurrentPage] = useState(1)
   const [scale, setScale] = useState(1.5)
   const [selectionData, setSelectionData] = useState<SelectionData | null>(null)
+  const [highlightPopup, setHighlightPopup] = useState<{ text: string; page: number; position: { x: number; y: number } } | null>(null)
 
   // 每页的容器 ref
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
@@ -345,6 +346,51 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
     return () => document.removeEventListener('mouseup', handleMouseUp)
   }, [])
 
+  // 点击已高亮文字弹出取消选项
+  useEffect(() => {
+    const container = scrollRef.current
+    if (!container) return
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'MARK' && container.contains(target)) {
+        e.stopPropagation()
+        const pageNum = findPageForNode(target)
+        if (!pageNum) return
+        setHighlightPopup({
+          text: target.textContent || '',
+          page: pageNum,
+          position: { x: e.clientX, y: e.clientY + 8 },
+        })
+      }
+    }
+    container.addEventListener('click', handleClick)
+    return () => container.removeEventListener('click', handleClick)
+  }, [])
+
+  const handleRemoveHighlight = async () => {
+    if (!highlightPopup) return
+    // 从 DB 中删除
+    const highlights = await db.highlights.where('bookId').equals(bookId).toArray()
+    const match = highlights.find(h =>
+      h.cfiRange === `page:${highlightPopup.page}` && h.text.includes(highlightPopup.text)
+    )
+    if (match?.id) await db.highlights.delete(match.id)
+    // 从 DOM 中移除 mark
+    const container = pageRefs.current.get(highlightPopup.page)
+    if (container) {
+      const marks = container.querySelectorAll('mark')
+      marks.forEach(mark => {
+        if (mark.textContent === highlightPopup.text) {
+          const parent = mark.parentNode!
+          while (mark.firstChild) parent.insertBefore(mark.firstChild, mark)
+          parent.removeChild(mark)
+          parent.normalize()
+        }
+      })
+    }
+    setHighlightPopup(null)
+  }
+
   // 高亮选区
   const applyHighlightToSelection = (color: string) => {
     const selection = document.getSelection()
@@ -396,16 +442,9 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
     document.getSelection()?.removeAllRanges()
   }
 
-  const handleAddToNote = async (color: string) => {
+  const handleAddToNote = async () => {
     if (!selectionData) return
-    applyHighlightToSelection(color)
-    await db.highlights.add({
-      bookId,
-      cfiRange: selectionData.cfiRange,
-      text: selectionData.text,
-      color,
-      createdAt: Date.now(),
-    })
+    // 仅插入引用到笔记编辑器，不做高亮
     const editor = (window as unknown as Record<string, unknown>).__tiptapEditor as
       { chain: () => { focus: () => { insertContent: (c: unknown) => { run: () => void } } } } | undefined
     if (editor) {
@@ -503,6 +542,21 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
           onAddToNote={handleAddToNote}
           onClose={() => setSelectionData(null)}
         />
+      )}
+
+      {highlightPopup && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setHighlightPopup(null)}
+        >
+          <button
+            className="fixed z-50 px-3 py-1.5 text-sm text-red-300 bg-gray-800 rounded-lg shadow-xl border border-gray-600 hover:bg-gray-700 select-none"
+            style={{ left: highlightPopup.position.x, top: highlightPopup.position.y }}
+            onClick={(e) => { e.stopPropagation(); handleRemoveHighlight() }}
+          >
+            取消高亮
+          </button>
+        </div>
       )}
     </div>
   )

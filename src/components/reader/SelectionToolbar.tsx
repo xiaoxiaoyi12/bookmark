@@ -5,7 +5,7 @@ const COLORS = ['#FBBF24', '#34D399', '#60A5FA', '#F87171', '#C084FC']
 interface Props {
   position: { x: number; y: number }
   onHighlight: (color: string) => void
-  onAddToNote: (color: string) => void
+  onAddToNote: () => void
   onClose: () => void
 }
 
@@ -30,7 +30,7 @@ export default function SelectionToolbar({ position, onHighlight, onAddToNote, o
 
   const handleColorPick = (color: string) => {
     if (action === 'highlight') onHighlight(color)
-    if (action === 'note') onAddToNote(color)
+    if (action === 'note') onAddToNote()
     setShowColors(false)
     setAction(null)
     onClose()
@@ -58,7 +58,7 @@ export default function SelectionToolbar({ position, onHighlight, onAddToNote, o
           </button>
           <button
             className="px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700 rounded"
-            onClick={() => { onAddToNote(COLORS[0]); onClose() }}
+            onClick={() => { onAddToNote(); onClose() }}
           >
             添加到笔记
           </button>

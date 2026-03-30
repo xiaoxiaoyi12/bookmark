@@ -93,9 +93,48 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # 启动桌面开发模式
 npm run tauri:dev
 
-# 构建桌面安装包（.dmg / .msi）
+# 构建桌面应用
 npm run tauri:build
 ```
+
+构建产物位于：
+
+```
+src-tauri/target/release/bundle/macos/Bookmark Reader.app
+```
+
+#### 首次安装
+
+将 `Bookmark Reader.app` 拖入 `/Applications/` 文件夹，或直接双击运行。
+
+macOS 首次打开可能提示"无法验证开发者"，解决方法：
+
+```bash
+# 移除系统隔离标记
+xattr -cr "/Applications/Bookmark Reader.app"
+```
+
+#### 更新版本
+
+桌面端目前不支持自动更新，每次代码变更后需手动重新构建并替换：
+
+```bash
+# 1. 拉取最新代码
+git pull
+
+# 2. 重新构建（需要 Rust 环境，首次编译较慢，后续增量编译约 15 秒）
+npm run tauri:build
+
+# 3. 关闭正在运行的 Bookmark Reader
+
+# 4. 覆盖安装到 Applications
+cp -R "src-tauri/target/release/bundle/macos/Bookmark Reader.app" /Applications/
+
+# 5. 重新打开
+open "/Applications/Bookmark Reader.app"
+```
+
+> **数据不会丢失**：书库、笔记、高亮、阅读进度等数据存储在 WebView 的 IndexedDB 中，更新 .app 不影响已有数据。
 
 ## 项目结构
 

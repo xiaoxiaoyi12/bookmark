@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react'
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react'
 import ePub, { type Rendition, type NavItem } from 'epubjs'
 import type Book from 'epubjs/types/book'
 import { db } from '../../db'
@@ -60,6 +60,10 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
   const [toc, setToc] = useState<NavItem[]>([])
   const [selectionData, setSelectionData] = useState<SelectionData | null>(null)
   const [highlightPopup, setHighlightPopup] = useState<{ cfiRange: string; position: { x: number; y: number } } | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(0)
+  const [pageInput, setPageInput] = useState('1')
+  const [fontSize, setFontSize] = useState(100)
   const { tocOpen } = useReaderStore()
   const resolved = useThemeStore(s => s.resolved)
 
@@ -163,13 +167,26 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
     // 加载目录
     book.loaded.navigation.then(nav => setToc(nav.toc))
 
-    // 翻页时保存进度
-    rendition.on('relocated', (location: { start: { cfi: string } }) => {
+    // 生成虚拟页码
+    book.ready.then(() => {
+      return (book as unknown as { locations: { generate: (chars: number) => Promise<string[]> } }).locations.generate(1024)
+    }).then(() => {
+      const locations = (book as unknown as { locations: { length: () => number } }).locations
+      setTotalPages(locations.length())
+    })
+
+    // 翻页时保存进度 & 更新页码
+    rendition.on('relocated', (location: { start: { cfi: string; location: number } }) => {
       db.readingProgress.put({
         bookId,
         location: location.start.cfi,
         updatedAt: Date.now(),
       })
+      if (location.start.location >= 0) {
+        const page = location.start.location + 1
+        setCurrentPage(page)
+        setPageInput(String(page))
+      }
     })
 
     // 加载并应用已保存的高亮（点击高亮弹出取消选项）
@@ -324,6 +341,43 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
     renditionRef.current?.display(href)
   }
 
+  // 字号缩放
+  const FONT_STEP = 10
+  const FONT_MIN = 60
+  const FONT_MAX = 200
+  const applyFontSize = useCallback((size: number) => {
+    setFontSize(size)
+    renditionRef.current?.themes.fontSize(`${size}%`)
+  }, [])
+  const fontUp = useCallback(() => applyFontSize(Math.min(fontSize + FONT_STEP, FONT_MAX)), [fontSize, applyFontSize])
+  const fontDown = useCallback(() => applyFontSize(Math.max(fontSize - FONT_STEP, FONT_MIN)), [fontSize, applyFontSize])
+  const fontReset = useCallback(() => applyFontSize(100), [applyFontSize])
+
+  // 页码跳转
+  const handlePageJump = () => {
+    const num = parseInt(pageInput, 10)
+    if (isNaN(num) || num < 1 || num > totalPages) {
+      setPageInput(String(currentPage))
+      return
+    }
+    const book = bookRef.current
+    if (!book) return
+    const locations = (book as unknown as { locations: { cfiFromLocation: (loc: number) => string } }).locations
+    const cfi = locations.cfiFromLocation(num - 1)
+    if (cfi) renditionRef.current?.display(cfi)
+  }
+
+  // 键盘缩放
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '=') { e.preventDefault(); fontUp() }
+      if ((e.metaKey || e.ctrlKey) && e.key === '-') { e.preventDefault(); fontDown() }
+      if ((e.metaKey || e.ctrlKey) && e.key === '0') { e.preventDefault(); fontReset() }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [fontUp, fontDown, fontReset])
+
   return (
     <div className="flex h-full">
       {tocOpen && (
@@ -331,8 +385,40 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
           <TableOfContents items={toc} onSelect={handleTocSelect} />
         </div>
       )}
-      <div className="flex-1 min-w-0">
-        <div ref={viewerRef} className="h-full" />
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* 工具栏 */}
+        <div className="flex items-center gap-3 py-2 px-4 shrink-0 flex-wrap justify-center select-none border-b border-amber-200 dark:border-gray-700">
+          {totalPages > 0 && (
+            <>
+              <span className="text-amber-600 dark:text-gray-400 text-sm flex items-center gap-0.5">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handlePageJump() }}
+                  onBlur={handlePageJump}
+                  className="w-8 text-center bg-transparent border-b border-amber-300 dark:border-gray-600 outline-none text-amber-700 dark:text-gray-300 text-sm"
+                />
+                <span>/ {totalPages}</span>
+              </span>
+              <span className="text-amber-300 dark:text-gray-600 mx-1">|</span>
+            </>
+          )}
+          <button onClick={fontDown} disabled={fontSize <= FONT_MIN}
+            className="text-amber-700 hover:text-amber-900 disabled:opacity-30 text-sm px-1 dark:text-gray-400 dark:hover:text-white">
+            A&minus;
+          </button>
+          <button onClick={fontReset}
+            className="text-amber-700 hover:text-amber-900 text-sm min-w-10 text-center dark:text-gray-400 dark:hover:text-white">
+            {fontSize}%
+          </button>
+          <button onClick={fontUp} disabled={fontSize >= FONT_MAX}
+            className="text-amber-700 hover:text-amber-900 disabled:opacity-30 text-sm px-1 dark:text-gray-400 dark:hover:text-white">
+            A+
+          </button>
+        </div>
+        <div ref={viewerRef} className="flex-1 min-h-0" />
       </div>
 
       {selectionData && (

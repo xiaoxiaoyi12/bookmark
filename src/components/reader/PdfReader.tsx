@@ -40,6 +40,7 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
   const [totalPages, setTotalPages] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [scale, setScale] = useState(1.5)
+  const [pageInput, setPageInput] = useState('1')
   const [selectionData, setSelectionData] = useState<SelectionData | null>(null)
   const [highlightPopup, setHighlightPopup] = useState<{ text: string; page: number; position: { x: number; y: number } } | null>(null)
 
@@ -475,6 +476,20 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
   const zoomOut = useCallback(() => setScale(s => Math.max(s - SCALE_STEP, SCALE_MIN)), [])
   const zoomReset = useCallback(() => setScale(1.5), [])
 
+  // pageInput 跟随 currentPage 同步
+  useEffect(() => {
+    setPageInput(String(currentPage))
+  }, [currentPage])
+
+  const handlePageJump = () => {
+    const num = parseInt(pageInput, 10)
+    if (isNaN(num) || num < 1 || num > totalPages) {
+      setPageInput(String(currentPage))
+      return
+    }
+    scrollToPage(num)
+  }
+
   // 点击页码跳转
   const scrollToPage = (pageNum: number) => {
     const el = pageRefs.current.get(pageNum)
@@ -506,7 +521,18 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
         >
           &larr; 上一页
         </button>
-        <span className="text-amber-600 dark:text-gray-400 text-sm">{currentPage} / {totalPages}</span>
+        <span className="text-amber-600 dark:text-gray-400 text-sm flex items-center gap-0.5">
+          <input
+            type="text"
+            inputMode="numeric"
+            value={pageInput}
+            onChange={(e) => setPageInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handlePageJump() }}
+            onBlur={handlePageJump}
+            className="w-8 text-center bg-transparent border-b border-amber-300 dark:border-gray-600 outline-none text-amber-700 dark:text-gray-300 text-sm"
+          />
+          <span>/ {totalPages}</span>
+        </span>
         <button
           onClick={() => scrollToPage(Math.min(currentPage + 1, totalPages))}
           disabled={currentPage >= totalPages}

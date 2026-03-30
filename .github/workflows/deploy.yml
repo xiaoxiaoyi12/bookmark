@@ -28,3 +28,4 @@ jobs:
           publish_branch: master
           publish_dir: ./dist
           destination_dir: bookmark
+          keep_files: true

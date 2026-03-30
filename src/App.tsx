@@ -4,7 +4,8 @@ import ReaderPage from './pages/ReaderPage'
 // 导入以触发 store 初始化（应用 dark class 到 html）
 import './stores/useThemeStore'
 
-const isTauri = '__TAURI__' in window
+declare const __IS_TAURI__: boolean
+const isTauri = __IS_TAURI__
 
 export default function App() {
   return (

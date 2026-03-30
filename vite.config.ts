@@ -42,6 +42,9 @@ const isTauri = !!process.env.TAURI_ENV_PLATFORM;
 
 export default defineConfig({
   base: isTauri ? "/" : "/bookmark/",
+  define: {
+    __IS_TAURI__: JSON.stringify(isTauri),
+  },
   plugins: [
     react(),
     tailwindcss(),

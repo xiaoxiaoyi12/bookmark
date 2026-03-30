@@ -17,6 +17,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![fetch_url])
         .setup(|app| {
             if cfg!(debug_assertions) {
+                // 开发模式下自动打开 devtools
+                use tauri::Manager;
+                let window = app.get_webview_window("main").unwrap();
+                window.open_devtools();
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
                         .level(log::LevelFilter::Info)

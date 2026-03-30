@@ -128,6 +128,21 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
 
     renditionRef.current = rendition
 
+    // Tauri WebKit 严格执行 iframe sandbox，需要给 epubjs 的 iframe 补上 allow-scripts
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (node instanceof HTMLIFrameElement && node.hasAttribute('sandbox')) {
+            const sb = node.getAttribute('sandbox') || ''
+            if (!sb.includes('allow-scripts')) {
+              node.setAttribute('sandbox', `${sb} allow-scripts allow-same-origin`.trim())
+            }
+          }
+        }
+      }
+    })
+    observer.observe(viewerRef.current!, { childList: true, subtree: true })
+
     // 根据当前主题注入样式
     const theme = useThemeStore.getState().resolved === 'dark' ? DARK_THEME : LIGHT_THEME
     rendition.themes.default(theme)
@@ -203,6 +218,34 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
     }
     rendition.hooks.content.register((contents: { document: Document }) => {
       contents.document.addEventListener('mousedown', handleIframeClick)
+
+      // Tauri WebKit 下 epubjs 的 'selected' 事件可能不触发，手动监听 mouseup 作为备用
+      contents.document.addEventListener('mouseup', () => {
+        setTimeout(() => {
+          const iframe = viewerRef.current?.querySelector('iframe')
+          const sel = iframe?.contentDocument?.getSelection()
+          if (!sel || sel.isCollapsed) return
+          const text = sel.toString().trim()
+          if (!text) return
+
+          // 获取 cfiRange
+          const range = sel.getRangeAt(0)
+          const cfi = (rendition.currentLocation() as unknown as { start?: { cfi: string } })?.start?.cfi
+          if (!cfi) return
+
+          const rect = range.getBoundingClientRect()
+          const iframeRect = iframe!.getBoundingClientRect()
+
+          setSelectionData({
+            text,
+            cfiRange: cfi,
+            position: {
+              x: iframeRect.left + rect.left + rect.width / 2 - 80,
+              y: iframeRect.top + rect.bottom + 8,
+            },
+          })
+        }, 10)
+      })
     })
 
     // 键盘切换章节（左右方向键）
@@ -213,6 +256,7 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
     document.addEventListener('keydown', handleKeyDown)
 
     return () => {
+      observer.disconnect()
       document.removeEventListener('keydown', handleKeyDown)
       rendition.destroy()
       book.destroy()

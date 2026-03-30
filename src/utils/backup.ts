@@ -4,9 +4,9 @@ interface BackupData {
   version: number
   exportedAt: number
   books: Record<string, unknown>[]
-  highlights: Record<string, unknown>[]
-  notes: Record<string, unknown>[]
-  readingProgress: Record<string, unknown>[]
+  highlights: unknown[]
+  notes: unknown[]
+  readingProgress: unknown[]
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {

@@ -27,7 +27,7 @@ export default function SearchBar({ bookId, readerRef }: Props) {
   const [searching, setSearching] = useState(false)
   const [currentIdx, setCurrentIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // 聚焦输入框
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHand
 import { db } from '../../db'
 import { arrayBufferToHtml } from '../../utils/web-fetch'
 import { useReaderStore } from '../../stores/useReaderStore'
+import { useAIStore } from '../../stores/useAIStore'
 import SelectionToolbar from './SelectionToolbar'
 import type { SearchResult, ReaderHandle, Highlight } from '../../types'
 
@@ -402,6 +403,7 @@ export default forwardRef<ReaderHandle, Props>(function WebReader({ bookId, file
           selectedText={selectionData.text}
           onHighlight={handleHighlight}
           onAddToNote={handleAddToNote}
+          onTranslate={() => { useAIStore.getState().requestTranslation(selectionData.text) }}
           onClose={() => setSelectionData(null)}
         />
       )}

@@ -3,6 +3,7 @@ import ePub, { type Rendition, type NavItem } from 'epubjs'
 import type Book from 'epubjs/types/book'
 import { db } from '../../db'
 import TableOfContents from './TableOfContents'
+import { useAIStore } from '../../stores/useAIStore'
 import SelectionToolbar from './SelectionToolbar'
 import { useReaderStore } from '../../stores/useReaderStore'
 import { useThemeStore } from '../../stores/useThemeStore'
@@ -300,6 +301,7 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
           selectedText={selectionData.text}
           onHighlight={handleHighlight}
           onAddToNote={handleAddToNote}
+          onTranslate={() => { useAIStore.getState().requestTranslation(selectionData.text) }}
           onClose={() => setSelectionData(null)}
         />
       )}

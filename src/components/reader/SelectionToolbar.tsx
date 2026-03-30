@@ -7,10 +7,11 @@ interface Props {
   selectedText: string
   onHighlight: (color: string) => void
   onAddToNote: () => void
+  onTranslate?: () => void
   onClose: () => void
 }
 
-export default function SelectionToolbar({ position, selectedText, onHighlight, onAddToNote, onClose }: Props) {
+export default function SelectionToolbar({ position, selectedText, onHighlight, onAddToNote, onTranslate, onClose }: Props) {
   const [showColors, setShowColors] = useState(false)
   const [action, setAction] = useState<'highlight' | 'note' | null>(null)
   const elRef = useRef<HTMLDivElement>(null)
@@ -63,6 +64,14 @@ export default function SelectionToolbar({ position, selectedText, onHighlight, 
           >
             添加到笔记
           </button>
+          {onTranslate && (
+            <button
+              className="px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100 dark:text-blue-300 dark:hover:bg-blue-900/30 rounded"
+              onClick={() => { onTranslate(); onClose() }}
+            >
+              翻译
+            </button>
+          )}
         </>
       ) : (
         <div className="flex gap-1 p-1">

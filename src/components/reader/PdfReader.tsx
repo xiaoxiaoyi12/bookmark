@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHand
 import * as pdfjsLib from 'pdfjs-dist'
 import { TextLayer } from 'pdfjs-dist'
 import { db } from '../../db'
+import { useAIStore } from '../../stores/useAIStore'
 import SelectionToolbar from './SelectionToolbar'
 import type { SearchResult, ReaderHandle, Highlight } from '../../types'
 
@@ -548,6 +549,7 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
           selectedText={selectionData.text}
           onHighlight={handleHighlight}
           onAddToNote={handleAddToNote}
+          onTranslate={() => { useAIStore.getState().requestTranslation(selectionData.text) }}
           onClose={() => setSelectionData(null)}
         />
       )}

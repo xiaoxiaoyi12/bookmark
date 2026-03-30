@@ -29,3 +29,4 @@ jobs:
           publish_dir: ./dist
           destination_dir: bookmark
           keep_files: true
+          disable_nojekyll: true

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { liveQuery } from 'dexie'
 import { db } from '../../db'
 import type { Highlight } from '../../types'
 
@@ -12,20 +13,16 @@ export default function HighlightList({ bookId, onDelete, onNavigate }: Props) {
   const [highlights, setHighlights] = useState<Highlight[]>([])
 
   useEffect(() => {
-    loadHighlights()
+    const sub = liveQuery(() =>
+      db.highlights.where('bookId').equals(bookId).reverse().sortBy('createdAt')
+    ).subscribe(setHighlights)
+    return () => sub.unsubscribe()
   }, [bookId])
-
-  const loadHighlights = () => {
-    db.highlights.where('bookId').equals(bookId)
-      .reverse().sortBy('createdAt')
-      .then(setHighlights)
-  }
 
   const handleDelete = async (h: Highlight) => {
     if (!h.id) return
     await db.highlights.delete(h.id)
     onDelete?.(h)
-    loadHighlights()
   }
 
   if (highlights.length === 0) {

@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { db } from '../../db'
 import { extractEpubMetadata } from '../../utils/epub-metadata'
 import type { Book } from '../../types'
@@ -8,6 +8,8 @@ interface Props {
 }
 
 export default function ImportDropzone({ onImported }: Props) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files) return
 
@@ -41,6 +43,7 @@ export default function ImportDropzone({ onImported }: Props) {
       await db.books.add(book)
     }
 
+    if (inputRef.current) inputRef.current.value = ''
     onImported()
   }, [onImported])
 
@@ -49,15 +52,16 @@ export default function ImportDropzone({ onImported }: Props) {
       className="border-2 border-dashed border-amber-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-amber-400 dark:hover:border-gray-400 transition-colors"
       onDragOver={e => e.preventDefault()}
       onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files) }}
-      onClick={() => {
-        const input = document.createElement('input')
-        input.type = 'file'
-        input.accept = '.epub,.pdf'
-        input.multiple = true
-        input.onchange = () => handleFiles(input.files)
-        input.click()
-      }}
+      onClick={() => inputRef.current?.click()}
     >
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".epub,.pdf"
+        multiple
+        className="hidden"
+        onChange={e => handleFiles(e.target.files)}
+      />
       <p className="text-amber-700/70 dark:text-gray-400 text-lg">拖拽 EPUB / PDF 文件到这里，或点击导入</p>
     </div>
   )

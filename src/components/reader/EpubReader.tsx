@@ -4,6 +4,7 @@ import type Book from 'epubjs/types/book'
 import { db } from '../../db'
 import TableOfContents from './TableOfContents'
 import { useAIStore } from '../../stores/useAIStore'
+import { appendQuoteToNote } from '../../utils/note-insert'
 import SelectionToolbar from './SelectionToolbar'
 import { useReaderStore } from '../../stores/useReaderStore'
 import { useThemeStore } from '../../stores/useThemeStore'
@@ -302,17 +303,9 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
     setSelectionData(null)
   }
 
-  const handleAddToNote = async () => {
+  const handleAddToNote = () => {
     if (!selectionData) return
-    // 仅插入引用到笔记编辑器，不做高亮
-    const editor = (window as unknown as Record<string, unknown>).__tiptapEditor as
-      { chain: () => { focus: () => { insertContent: (c: unknown) => { run: () => void } } } } | undefined
-    if (editor) {
-      editor.chain().focus().insertContent([
-        { type: 'blockquote', content: [{ type: 'paragraph', content: [{ type: 'text', text: selectionData.text }] }] },
-        { type: 'paragraph' },
-      ]).run()
-    }
+    appendQuoteToNote(selectionData.text)
     setSelectionData(null)
   }
 

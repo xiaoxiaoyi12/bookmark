@@ -62,6 +62,10 @@ export default function TiptapEditor({ content, onUpdate }: Props) {
   useEffect(() => {
     if (editor) {
       (window as unknown as Record<string, unknown>).__tiptapEditor = editor
+      // 初始化时将光标移到文档末尾，确保"添加到笔记"始终追加在底部
+      requestAnimationFrame(() => {
+        editor.commands.focus('end')
+      })
     }
     return () => { (window as unknown as Record<string, unknown>).__tiptapEditor = undefined }
   }, [editor])

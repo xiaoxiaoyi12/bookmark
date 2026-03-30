@@ -4,6 +4,7 @@ import type { Book } from '../types'
 import ImportDropzone from '../components/library/ImportDropzone'
 import BookGrid from '../components/library/BookGrid'
 import { exportBackup, importBackup } from '../utils/backup'
+import { fetchWebContent, htmlToArrayBuffer } from '../utils/web-fetch'
 import ThemeToggle from '../components/ThemeToggle'
 
 export default function LibraryPage() {
@@ -11,6 +12,9 @@ export default function LibraryPage() {
   const [importing, setImporting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [urlInput, setUrlInput] = useState('')
+  const [urlLoading, setUrlLoading] = useState(false)
+  const [showUrlInput, setShowUrlInput] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const loadBooks = useCallback(async () => {
@@ -37,6 +41,33 @@ export default function LibraryPage() {
       setToast('备份文件已下载')
     } catch {
       setToast('导出失败')
+    }
+  }
+
+  const handleWebImport = async () => {
+    const url = urlInput.trim()
+    if (!url) return
+    setUrlLoading(true)
+    try {
+      const result = await fetchWebContent(url)
+      const fileData = htmlToArrayBuffer(result.content)
+      await db.books.add({
+        title: result.title,
+        author: result.author,
+        format: 'web',
+        coverUrl: result.coverUrl,
+        fileData,
+        url,
+        createdAt: Date.now(),
+      })
+      await loadBooks()
+      setUrlInput('')
+      setShowUrlInput(false)
+      setToast(`已保存：${result.title}`)
+    } catch (err) {
+      setToast(`抓取失败：${err instanceof Error ? err.message : '未知错误'}`)
+    } finally {
+      setUrlLoading(false)
     }
   }
 
@@ -89,6 +120,39 @@ export default function LibraryPage() {
             </div>
           )}
           <ThemeToggle />
+          {showUrlInput ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="url"
+                value={urlInput}
+                onChange={e => setUrlInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleWebImport(); if (e.key === 'Escape') { setShowUrlInput(false); setUrlInput('') } }}
+                placeholder="输入网页 URL..."
+                autoFocus
+                className="w-64 px-3 py-1.5 text-sm rounded-lg border border-amber-200 bg-white placeholder-amber-400 text-amber-900 outline-none focus:border-amber-400 transition-colors dark:bg-gray-800 dark:border-gray-700 dark:placeholder-gray-500 dark:text-gray-200 dark:focus:border-gray-500"
+              />
+              <button
+                onClick={handleWebImport}
+                disabled={urlLoading || !urlInput.trim()}
+                className="px-3 py-1.5 text-sm text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700"
+              >
+                {urlLoading ? '抓取中...' : '保存'}
+              </button>
+              <button
+                onClick={() => { setShowUrlInput(false); setUrlInput('') }}
+                className="px-2 py-1.5 text-sm text-amber-600 hover:text-amber-800 dark:text-gray-400 dark:hover:text-white"
+              >
+                取消
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowUrlInput(true)}
+              className="px-3 py-1.5 text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-700"
+            >
+              添加网页
+            </button>
+          )}
           <button
             onClick={handleExport}
             className="px-3 py-1.5 text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-700"

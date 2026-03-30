@@ -101,9 +101,10 @@ export async function importBackup(file: File): Promise<{ books: number; highlig
     const newId = await db.books.add({
       title: book.title as string,
       author: book.author as string,
-      format: book.format as 'epub' | 'pdf',
+      format: book.format as 'epub' | 'pdf' | 'web',
       coverUrl: book.coverUrl as string | undefined,
       fileData,
+      url: book.url as string | undefined,
       createdAt: book.createdAt as number,
     })
 

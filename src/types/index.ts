@@ -2,9 +2,10 @@ export interface Book {
   id?: number
   title: string
   author: string
-  format: 'epub' | 'pdf'
+  format: 'epub' | 'pdf' | 'web'
   coverUrl?: string          // base64 data URL
-  fileData: ArrayBuffer       // 文件原始字节
+  fileData: ArrayBuffer       // 文件原始字节（web 类型存 HTML）
+  url?: string               // 网页原始 URL（仅 web 类型）
   createdAt: number           // Date.now()
 }
 

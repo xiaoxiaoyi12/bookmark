@@ -5,6 +5,7 @@ import type { Book, ReaderHandle } from '../types'
 import { useReaderStore } from '../stores/useReaderStore'
 import EpubReader from '../components/reader/EpubReader'
 import PdfReader from '../components/reader/PdfReader'
+import WebReader from '../components/reader/WebReader'
 import NotePanel from '../components/notes/NotePanel'
 import SearchBar from '../components/reader/SearchBar'
 import ThemeToggle from '../components/ThemeToggle'
@@ -69,6 +70,9 @@ export default function ReaderPage() {
           )}
           {book.format === 'pdf' && book.id && (
             <PdfReader ref={readerRef} bookId={book.id} fileData={book.fileData} />
+          )}
+          {book.format === 'web' && book.id && (
+            <WebReader ref={readerRef} bookId={book.id} fileData={book.fileData} url={book.url} />
           )}
         </div>
 

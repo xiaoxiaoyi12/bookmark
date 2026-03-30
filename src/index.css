@@ -217,3 +217,103 @@ body {
   background-color: rgba(251, 191, 36, 0.3);
   border-radius: 2px;
 }
+
+/* 网页阅读器正文排版 */
+.web-reader-content {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #3d3929;
+  word-break: break-word;
+}
+.dark .web-reader-content {
+  color: #e5e7eb;
+}
+.web-reader-content h1, .web-reader-content h2, .web-reader-content h3,
+.web-reader-content h4, .web-reader-content h5, .web-reader-content h6 {
+  font-weight: 600;
+  margin: 1.5em 0 0.5em;
+  color: #2d2a1e;
+}
+.dark .web-reader-content h1, .dark .web-reader-content h2, .dark .web-reader-content h3,
+.dark .web-reader-content h4, .dark .web-reader-content h5, .dark .web-reader-content h6 {
+  color: #f9fafb;
+}
+.web-reader-content h1 { font-size: 1.8rem; }
+.web-reader-content h2 { font-size: 1.4rem; }
+.web-reader-content h3 { font-size: 1.2rem; }
+.web-reader-content p { margin: 0.8em 0; }
+.web-reader-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 1em 0;
+}
+.web-reader-content a {
+  color: #b4637a;
+  text-decoration: underline;
+}
+.dark .web-reader-content a {
+  color: #f472b6;
+}
+.web-reader-content blockquote {
+  border-left: 3px solid #8b7e56;
+  padding-left: 1rem;
+  color: #7a7160;
+  margin: 1em 0;
+}
+.dark .web-reader-content blockquote {
+  border-left-color: #3b82f6;
+  color: #9ca3af;
+}
+.web-reader-content pre {
+  background: #f0ebe0;
+  border: 1px solid #ddd5c4;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  font-size: 0.85em;
+}
+.dark .web-reader-content pre {
+  background: #0d1117;
+  border-color: #30363d;
+}
+.web-reader-content code {
+  background: #ede8dc;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+.dark .web-reader-content code {
+  background: #1f2937;
+}
+.web-reader-content pre code {
+  background: none;
+  padding: 0;
+}
+.web-reader-content ul, .web-reader-content ol {
+  padding-left: 1.5rem;
+  margin: 0.5em 0;
+}
+.web-reader-content ul { list-style-type: disc; }
+.web-reader-content ol { list-style-type: decimal; }
+.web-reader-content li { margin: 0.25em 0; }
+.web-reader-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+.web-reader-content th, .web-reader-content td {
+  border: 1px solid #ddd5c4;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.dark .web-reader-content th, .dark .web-reader-content td {
+  border-color: #374151;
+}
+.web-reader-content th {
+  background: #f0ebe0;
+  font-weight: 600;
+}
+.dark .web-reader-content th {
+  background: #1f2937;
+}

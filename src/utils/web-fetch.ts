@@ -1,4 +1,5 @@
 import { Readability } from '@mozilla/readability'
+import { invoke } from '@tauri-apps/api/core'
 
 export interface WebContent {
   title: string
@@ -14,6 +15,11 @@ export interface WebContent {
  * - 生产环境：通过 allorigins 公共代理
  */
 async function fetchHtml(url: string): Promise<string> {
+  // Tauri 桌面端：直接 Rust 侧抓取，无 CORS 限制
+  if ('__TAURI__' in window) {
+    return invoke<string>('fetch_url', { url })
+  }
+
   // 开发环境使用本地代理
   if (import.meta.env.DEV) {
     const resp = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`)

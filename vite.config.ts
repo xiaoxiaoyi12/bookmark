@@ -38,51 +38,69 @@ function corsProxyPlugin(): Plugin {
   };
 }
 
+const isTauri = !!process.env.TAURI_ENV_PLATFORM;
+
 export default defineConfig({
-  base: "/bookmark/",
+  base: isTauri ? "/" : "/bookmark/",
   plugins: [
     react(),
     tailwindcss(),
     corsProxyPlugin(),
-    VitePWA({
-      registerType: "autoUpdate",
-      devOptions: { enabled: true },
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
-        navigateFallback: "index.html",
-        navigateFallbackAllowlist: [/^\/bookmark\//],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "cdn-cache",
-              expiration: { maxEntries: 50, maxAgeSeconds: 30 * 24 * 60 * 60 },
+    ...(isTauri
+      ? []
+      : [
+          VitePWA({
+            registerType: "autoUpdate",
+            devOptions: { enabled: true },
+            workbox: {
+              globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+              navigateFallback: "index.html",
+              navigateFallbackAllowlist: [/^\/bookmark\//],
+              runtimeCaching: [
+                {
+                  urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
+                  handler: "CacheFirst",
+                  options: {
+                    cacheName: "cdn-cache",
+                    expiration: {
+                      maxEntries: 50,
+                      maxAgeSeconds: 30 * 24 * 60 * 60,
+                    },
+                  },
+                },
+              ],
             },
-          },
-        ],
-      },
-      manifest: {
-        name: "Bookmark Reader",
-        short_name: "Bookmark",
-        description: "支持 EPUB / PDF / 网页阅读，带 AI 助手的离线阅读器",
-        theme_color: "#8b6914",
-        background_color: "#faf6f0",
-        display: "standalone",
-        scope: "/bookmark/",
-        start_url: "/bookmark/",
-        icons: [
-          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
-          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
-          {
-            src: "pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-        ],
-      },
-    }),
+            manifest: {
+              name: "Bookmark Reader",
+              short_name: "Bookmark",
+              description:
+                "支持 EPUB / PDF / 网页阅读，带 AI 助手的离线阅读器",
+              theme_color: "#8b6914",
+              background_color: "#faf6f0",
+              display: "standalone",
+              scope: "/bookmark/",
+              start_url: "/bookmark/",
+              icons: [
+                {
+                  src: "pwa-192x192.png",
+                  sizes: "192x192",
+                  type: "image/png",
+                },
+                {
+                  src: "pwa-512x512.png",
+                  sizes: "512x512",
+                  type: "image/png",
+                },
+                {
+                  src: "pwa-512x512.png",
+                  sizes: "512x512",
+                  type: "image/png",
+                  purpose: "maskable",
+                },
+              ],
+            },
+          }),
+        ]),
   ],
   server: {
     proxy: {},

@@ -487,13 +487,13 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
       setPageInput(String(currentPage))
       return
     }
-    scrollToPage(num)
+    scrollToPage(num, 'instant')
   }
 
   // 点击页码跳转
-  const scrollToPage = (pageNum: number) => {
+  const scrollToPage = (pageNum: number, behavior: ScrollBehavior = 'smooth') => {
     const el = pageRefs.current.get(pageNum)
-    if (el) el.scrollIntoView({ behavior: 'smooth' })
+    if (el) el.scrollIntoView({ behavior })
   }
 
   // 键盘缩放

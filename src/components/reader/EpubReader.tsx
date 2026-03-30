@@ -100,6 +100,9 @@ export default forwardRef<ReaderHandle, Props>(function EpubReader({ bookId, fil
     removeHighlight(highlight: Highlight) {
       renditionRef.current?.annotations.remove(highlight.cfiRange, 'highlight')
     },
+    goToHighlight(highlight: Highlight) {
+      renditionRef.current?.display(highlight.cfiRange)
+    },
   }), [])
 
   // 主题变化时更新 EPUB 内容样式

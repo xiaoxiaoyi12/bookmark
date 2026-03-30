@@ -173,6 +173,18 @@ export default forwardRef<ReaderHandle, Props>(function WebReader({ bookId, file
         }
       })
     },
+    goToHighlight(highlight: Highlight) {
+      const container = contentRef.current
+      if (!container) return
+      // 查找 DOM 中匹配的 mark 元素并滚动到该位置
+      const marks = container.querySelectorAll('mark')
+      for (const mark of marks) {
+        if (mark.textContent === highlight.text) {
+          mark.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
+        }
+      }
+    },
   }), [])
 
   // 保存阅读进度（滚动位置百分比）

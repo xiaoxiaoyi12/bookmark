@@ -95,6 +95,12 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
         }
       })
     },
+    goToHighlight(highlight: Highlight) {
+      const pageNum = highlight.cfiRange.startsWith('page:') ? Number(highlight.cfiRange.split(':')[1]) : null
+      if (!pageNum) return
+      const el = pageRefs.current.get(pageNum)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    },
   }), [pdfDoc])
 
   // 加载 PDF

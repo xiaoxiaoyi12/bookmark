@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https: http:"
+      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https: http:; worker-src 'self' blob: https: http:"
     }
   },
   "bundle": {

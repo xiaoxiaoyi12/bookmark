@@ -6,10 +6,16 @@ import { useAIStore } from '../../stores/useAIStore'
 import SelectionToolbar from './SelectionToolbar'
 import type { SearchResult, ReaderHandle, Highlight } from '../../types'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.mjs',
-  import.meta.url,
-).toString()
+// PDF.js worker：Tauri 桌面端用 CDN，Web 端用本地打包
+if ('__TAURI__' in window) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.mjs`
+} else {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.mjs',
+    import.meta.url,
+  ).toString()
+}
 
 interface Props {
   bookId: number
@@ -132,7 +138,8 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
 
     try {
       await page.render({ canvasContext: ctx, canvas, viewport }).promise
-    } catch {
+    } catch (err) {
+      console.error(`PDF render page ${pageNum} failed:`, err)
       return
     }
 

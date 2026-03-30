@@ -1,5 +1,4 @@
 import { Readability } from '@mozilla/readability'
-import { invoke } from '@tauri-apps/api/core'
 
 export interface WebContent {
   title: string
@@ -17,6 +16,7 @@ export interface WebContent {
 async function fetchHtml(url: string): Promise<string> {
   // Tauri 桌面端：直接 Rust 侧抓取，无 CORS 限制
   if ('__TAURI__' in window) {
+    const { invoke } = await import('@tauri-apps/api/core')
     return invoke<string>('fetch_url', { url })
   }
 

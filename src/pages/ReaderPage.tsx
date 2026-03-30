@@ -98,7 +98,7 @@ export default function ReaderPage() {
         )}
 
         {noteOpen && book.id && (
-          <div className="border-l border-amber-200 dark:border-gray-700 shrink-0" style={{ width: noteWidth }}>
+          <div className="h-full border-l border-amber-200 dark:border-gray-700 shrink-0" style={{ width: noteWidth }}>
             <NotePanel bookId={book.id} readerRef={readerRef} />
           </div>
         )}
@@ -111,7 +111,7 @@ export default function ReaderPage() {
         )}
 
         {aiOpen && book.id && (
-          <div className="border-l border-amber-200 dark:border-gray-700 shrink-0" style={{ width: aiWidth }}>
+          <div className="h-full border-l border-amber-200 dark:border-gray-700 shrink-0" style={{ width: aiWidth }}>
             <AIChatPanel
               bookId={book.id}
               getContent={getBookContent}

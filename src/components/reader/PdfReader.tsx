@@ -116,20 +116,23 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
 
     const page = await pdfDoc.getPage(pageNum)
     const viewport = page.getViewport({ scale })
-    const w = Math.floor(viewport.width)
-    const h = Math.floor(viewport.height)
+    const w = viewport.width
+    const h = viewport.height
 
+    // 容器设置：固定尺寸 + relative 定位 + CSS 变量供 TextLayer 使用
     container.style.width = `${w}px`
     container.style.height = `${h}px`
+    container.style.position = 'relative'
+    container.style.setProperty('--total-scale-factor', String(scale))
+    container.style.setProperty('--scale-round-x', '1px')
+    container.style.setProperty('--scale-round-y', '1px')
 
-    // Canvas
+    // Canvas — 绝对定位，铺满容器
     const canvas = document.createElement('canvas')
     const dpr = window.devicePixelRatio || 1
-    canvas.width = Math.floor(viewport.width * dpr)
-    canvas.height = Math.floor(viewport.height * dpr)
-    canvas.style.width = `${w}px`
-    canvas.style.height = `${h}px`
-    canvas.style.display = 'block'
+    canvas.width = Math.round(w * dpr)
+    canvas.height = Math.round(h * dpr)
+    canvas.style.cssText = `position:absolute;left:0;top:0;width:${w}px;height:${h}px;display:block;`
     const ctx = canvas.getContext('2d')!
     ctx.scale(dpr, dpr)
 
@@ -143,11 +146,9 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
       return
     }
 
-    // Text layer
+    // Text layer — 由 pdfjs setLayerDimensions 自动设置宽高（依赖 --total-scale-factor）
     const textDiv = document.createElement('div')
     textDiv.className = 'pdf-text-layer'
-    textDiv.style.width = `${w}px`
-    textDiv.style.height = `${h}px`
     container.appendChild(textDiv)
 
     const textContent = await page.getTextContent()
@@ -175,11 +176,9 @@ export default forwardRef<ReaderHandle, Props>(function PdfReader({ bookId, file
     if (!pdfDoc) return
     pdfDoc.getPage(1).then(page => {
       const viewport = page.getViewport({ scale })
-      const w = Math.floor(viewport.width)
-      const h = Math.floor(viewport.height)
       pageRefs.current.forEach((container) => {
-        container.style.width = `${w}px`
-        container.style.height = `${h}px`
+        container.style.width = `${viewport.width}px`
+        container.style.height = `${viewport.height}px`
         container.innerHTML = ''
       })
     })

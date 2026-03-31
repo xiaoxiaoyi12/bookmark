@@ -3,8 +3,6 @@ import { db } from '../../db'
 import { extractEpubMetadata } from '../../utils/epub-metadata'
 import type { Book } from '../../types'
 
-declare const __IS_TAURI__: boolean
-
 interface Props {
   onImported: () => void
 }
@@ -12,8 +10,9 @@ interface Props {
 export default function ImportDropzone({ onImported }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
+  // Tauri 拖放是否已接管（浏览器 onDrop 在 Tauri 中不生效，避免重复处理）
+  const tauriActive = useRef(false)
 
-  // 通用：从文件名和 ArrayBuffer 导入一本书
   const importBook = useCallback(async (fileName: string, data: ArrayBuffer) => {
     const ext = fileName.split('.').pop()?.toLowerCase()
     if (ext !== 'epub' && ext !== 'pdf') return
@@ -24,25 +23,21 @@ export default function ImportDropzone({ onImported }: Props) {
     let coverUrl: string | undefined
 
     if (format === 'epub') {
-      const meta = await extractEpubMetadata(data)
-      title = meta.title
-      author = meta.author
-      coverUrl = meta.coverUrl
+      try {
+        const meta = await extractEpubMetadata(data.slice(0))
+        title = meta.title
+        author = meta.author
+        coverUrl = meta.coverUrl
+      } catch {
+        // 元数据提取失败，使用文件名
+      }
     }
 
-    const book: Book = {
-      title,
-      author,
-      format,
-      coverUrl,
-      fileData: data,
-      createdAt: Date.now(),
-    }
-
+    const book: Book = { title, author, format, coverUrl, fileData: data, createdAt: Date.now() }
     await db.books.add(book)
   }, [])
 
-  // 浏览器 File 对象批量导入
+  // 浏览器 File 对象导入
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files) return
     for (const file of Array.from(files)) {
@@ -53,28 +48,32 @@ export default function ImportDropzone({ onImported }: Props) {
     onImported()
   }, [onImported, importBook])
 
-  // Tauri 拖放：通过文件路径读取
+  // Tauri 文件路径导入
   const handleTauriPaths = useCallback(async (paths: string[]) => {
     const { invoke } = await import('@tauri-apps/api/core')
     for (const path of paths) {
       const ext = path.split('.').pop()?.toLowerCase()
       if (ext !== 'epub' && ext !== 'pdf') continue
       const fileName = path.split('/').pop() || path.split('\\').pop() || path
-      const bytes: number[] = await invoke('read_file', { path })
-      const data = new Uint8Array(bytes).buffer
+      const result = await invoke('read_file', { path })
+      // Tauri v2 对 Vec<u8> 可能返回 ArrayBuffer 或 number[]
+      const data = result instanceof ArrayBuffer
+        ? result
+        : new Uint8Array(result as number[]).buffer
       await importBook(fileName, data)
     }
     onImported()
   }, [onImported, importBook])
 
-  // Tauri 环境：监听系统级拖放事件
+  // Tauri 拖放监听（StrictMode 安全：用 cancelled flag 防止旧 effect 注册）
   useEffect(() => {
-    if (!__IS_TAURI__) return
-
+    let cancelled = false
     let unlisten: (() => void) | null = null
 
     import('@tauri-apps/api/webview').then(({ getCurrentWebview }) => {
-      getCurrentWebview().onDragDropEvent((event) => {
+      if (cancelled) return
+      return getCurrentWebview().onDragDropEvent((event) => {
+        if (cancelled) return
         if (event.payload.type === 'over') {
           setIsDragging(true)
         } else if (event.payload.type === 'drop') {
@@ -83,10 +82,21 @@ export default function ImportDropzone({ onImported }: Props) {
         } else {
           setIsDragging(false)
         }
-      }).then(fn => { unlisten = fn })
-    })
+      })
+    }).then(fn => {
+      if (cancelled) {
+        fn?.()  // 已被 cleanup，立即取消注册
+      } else {
+        unlisten = fn ?? null
+        tauriActive.current = true
+      }
+    }).catch(() => {})
 
-    return () => { unlisten?.() }
+    return () => {
+      cancelled = true
+      unlisten?.()
+      tauriActive.current = false
+    }
   }, [handleTauriPaths])
 
   return (
@@ -97,7 +107,10 @@ export default function ImportDropzone({ onImported }: Props) {
           : 'border-amber-300 dark:border-gray-600 hover:border-amber-400 dark:hover:border-gray-400'
       }`}
       onDragOver={e => e.preventDefault()}
-      onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files) }}
+      onDrop={e => {
+        e.preventDefault()
+        if (!tauriActive.current) handleFiles(e.dataTransfer.files)
+      }}
       onClick={() => inputRef.current?.click()}
     >
       <input
